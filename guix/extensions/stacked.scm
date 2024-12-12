@@ -6,7 +6,6 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
-  #:use-module (stguix scripts pull)
   #:export (guix-stacked))
 
 ;;;
@@ -22,7 +21,11 @@
      (with-error-handling
        (match args
          (("pull" rest)
-          (stacked-pull #:args (cdr args))))))
+          ;; Ensure guix sees (stguix scripts pull)
+          ;; (add-to-load-path
+           ;; (dirname (dirname (current-filename))))
+          ((@ (stguix scripts pull) stacked-pull)
+           #:args (cdr args))))))
     (_
      (format (current-error-port)
              "guix: missing or unknown command name~%"))))
