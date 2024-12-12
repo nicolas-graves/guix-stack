@@ -3,6 +3,7 @@
 
 (define-module (guix extensions stacked)
   #:use-module (guix scripts)
+  #:use-module ((guix ui) #:select (with-error-handling))
   #:use-module (ice-9 match)
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
@@ -19,13 +20,13 @@
   (match (command-line)
     ((guix stacked . args)
      (with-error-handling
-       (match args
-         (("pull" rest)
+       (match (car args)
+         ("pull"
           ;; Ensure guix sees (stguix scripts pull)
-          ;; (add-to-load-path
-           ;; (dirname (dirname (current-filename))))
+          (add-to-load-path
+           (dirname (dirname (current-filename))))
           ((@ (stguix scripts pull) stacked-pull)
-           #:args (cdr args))))))
-    (_
-     (format (current-error-port)
-             "guix: missing or unknown command name~%"))))
+           #:args (cdr args)))
+         (_
+          (format (current-error-port)
+                  "guix: stacked: missing or unknown subcommand name~%")))))))
