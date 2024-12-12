@@ -21,4 +21,4 @@
          (stack-pull #:args (cdr command-args)))
         (_
          (format (current-error-port)
-                 "guix: missing or unknown command name~%"))))))
+                 "guix-stack: missing or unknown command name~%"))))))
