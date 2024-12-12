@@ -115,8 +115,13 @@ returns a boolean to determine whether rewriting should continue."
     (arguments
      '(#:make-flags
        '("GUILE_AUTO_COMPILE=0")))
+    ;; (inputs
+    ;; (list guix guix-guile (p guile-git)))
     (inputs
-     (list guix guix-guile (p guile-git) (p guile-config)))
+     (let ((p (package-input-rewriting
+               `((,guile-3.0 . ,guile-3.0-latest))
+               #:deep? #false)))
+       (list guix guile-3.0-latest (p guile-git))))
     (native-inputs
      (append
       (list autoconf automake pkg-config texinfo graphviz)
