@@ -4,7 +4,8 @@
 
 (define-module (guix-stack-channel))
 
-(use-modules (ice-9 vlist)
+(use-modules (guix git)
+             (ice-9 vlist)
              (ice-9 match)
              (srfi srfi-1)
              (srfi srfi-11)
@@ -102,18 +103,14 @@ returns a boolean to determine whether rewriting should continue."
   with-guix-guile-instead-of-any-guile)
 
 (define-public guix-stack/devel
+  (define commit "0ecea1263f1b42615c4cde9290c972a1f9a06dc7")
   (package
     (name "guix-stack")
-    (version (git-version "0.0.0" "0" "11d4d56"))
+    (version (git-version "0.0.0" "0" (string-take commit 7)))
     (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://git.sr.ht/~ngraves/guix-stack")
-             (commit "11d4d5639701fd769a3ee777f6f1d7a34375a5de")))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0sjjj9z1dhilhpc8pq4154czrb79z9cm044jvn75kxcjv6v5l2m5"))))
+     (git-checkout
+      (url "https://git.sr.ht/~ngraves/guix-stack")
+      (commit commit)))
     (build-system gnu-build-system)
     (arguments
      '(#:make-flags
