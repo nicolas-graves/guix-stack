@@ -29,12 +29,12 @@
                     '(begin
                        (define (replace-load-paths!)
                          (let ((own-load-path
-                                (if (getenv "GWL_UNINSTALLED")
+                                (if (getenv "STGUIX_UNINSTALLED")
                                     (list "@abs_top_srcdir@"
                                           "@abs_top_builddir@")
                                     (list "@guilemoduledir@")))
                                (own-load-compiled-path
-                                (if (getenv "GWL_UNINSTALLED")
+                                (if (getenv "STGUIX_UNINSTALLED")
                                     (list "@abs_top_srcdir@"
                                           "@abs_top_builddir@")
                                     (list "@guileobjectdir@"))))
