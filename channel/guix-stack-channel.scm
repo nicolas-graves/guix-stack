@@ -104,11 +104,16 @@ returns a boolean to determine whether rewriting should continue."
 (define-public guix-stack/devel
   (package
     (name "guix-stack")
-    (source (local-file
-             "guix-stack"
-             (dirname (dirname (current-filename)))
-             #:recursive? #t))
-    (version "0.0.0")
+    (version (git-version "0.0.0" "0" "11d4d56"))
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://git.sr.ht/~ngraves/guix-stack")
+             (commit "11d4d5639701fd769a3ee777f6f1d7a34375a5de")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0sjjj9z1dhilhpc8pq4154czrb79z9cm044jvn75kxcjv6v5l2m5"))))
     (build-system gnu-build-system)
     (arguments
      '(#:make-flags
