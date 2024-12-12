@@ -30,21 +30,71 @@
       (define (no-arguments arg _)
         (leave (G_ "~A: extraneous argument~%") arg))
 
-      (parse-command-line ',args %options
-                          (list %default-options)
-                          #:argument-handler no-arguments))
+      (let ((opts (parse-command-line ',args %options
+                                      (list %default-options)
+                                      #:argument-handler no-arguments))
+            (unsupported '(ref repository-url)))
+        (remove (lambda (item)
+                  (member (car item) unsupported))
+                opts)))
+   (resolve-module '(guix scripts pull) #:ensure #f)))
+
+(define (channel-or-instance-list opts)
+  "Return the list of channel-instances to use.  If OPTS specify a
+channel file, channels are read from there; otherwise, if
+~/.config/guix/channels.scm exists, read it; otherwise
+%DEFAULT-CHANNELS is used.  Apply channel transformations specified in
+OPTS (resulting from '--url', '--commit', or '--branch'), if any."
+  (eval
+   `(begin
+      (reload-module (current-module))
+
+      (define file
+        (assoc-ref ',opts 'channel-file))
+
+      (define ignore-channel-files?
+        (assoc-ref ',opts 'ignore-channel-files?))
+
+      (define default-file
+        (string-append (config-directory) "/channels.scm"))
+
+      (define global-file
+        (string-append %sysconfdir "/guix/channels.scm"))
+
+      (define (load-channels-and-instances file)
+        (define (channel-or-instance? cand)
+          (or (channel? cand) (channel-instance? cand)))
+
+        (let ((result (load* file (make-user-module '((guix channels))))))
+          (if (and (list? result) (every channel-or-instance? result))
+              result
+              (leave
+               (G_ "'~a' did not return a list of channels or instances~%")
+               file))))
+
+      (cond (file
+             (load-channels-and-instances file))
+            ((and (not ignore-channel-files?)
+                  (file-exists? default-file))
+             (load-channels-and-instances default-file))
+            ((and (not ignore-channel-files?)
+                  (file-exists? global-file))
+             (load-channels-and-instances global-file))
+            (else
+             %default-channels)))
+
    (resolve-module '(guix scripts pull) #:ensure #f)))
 
 (define* (stack-pull #:key (args (list "--allow-downgrades"
-                                         "--disable-authentication")))
+                                       "--disable-authentication")))
   "Call `stack-force-pull' if there are new commits in source directories."
   (with-error-handling
     (with-git-error-handling
      (let* ((opts (stack-parse-command-line args))
             (profile (or (assoc-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
-            ;; This is more powerful but also more dangerous than load-channels
-            (read-channels (primitive-load (assoc-ref opts 'channel-file)))
+            (read-channels (channel-or-instance-list
+                            (assoc-ref opts 'channel-file)))
             (channels instances (partition channel? read-channels))
             (next-channels (pk 'nc (append
                                     channels
