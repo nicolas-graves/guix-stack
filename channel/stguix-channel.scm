@@ -9,6 +9,7 @@
              (srfi srfi-1)
              (srfi srfi-11)
              (guix packages)
+             (guix gexp)
              (guix git-download)
              (guix build-system gnu)
              (guix transformations)
