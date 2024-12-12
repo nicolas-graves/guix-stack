@@ -1,2 +1,2 @@
-(use-modules (stguix-channel))
-(package->development-manifest stguix/devel)
+(use-modules (guix-stack-channel))
+(package->development-manifest guix-stack/devel)

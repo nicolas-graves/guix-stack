@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Stacked Guix (stguix) - Tools for local development on GNU Guix
+# Guix Stack - Tools for local development on GNU Guix
 # Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
 
 abs_top_srcdir="`cd "@abs_top_srcdir@" > /dev/null; pwd`"
@@ -14,8 +14,8 @@ export GUILE_LOAD_COMPILED_PATH GUILE_LOAD_PATH
 PATH="$abs_top_builddir/scripts:$PATH"
 export PATH
 
-STGUIX_UNINSTALLED="t"
-export STGUIX_UNINSTALLED
+GUIX_STACK_UNINSTALLED="t"
+export GUIX_STACK_UNINSTALLED
 
 GUIX_EXTENSIONS_PATH="$abs_top_builddir/guix/extensions"
 export GUIX_EXTENSIONS_PATH

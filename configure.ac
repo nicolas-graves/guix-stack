@@ -1,12 +1,12 @@
 dnl SPDX-License-Identifier: GPL-3.0-or-later
-dnl Stacked Guix (stguix) - Tools for local development on GNU Guix
+dnl Guix Stack - Tools for local development on GNU Guix
 dnl Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
 dnl -*- Autoconf -*-
 
-AC_INIT([STACKED GUIX],
+AC_INIT([GUIX STACK],
   [0.0.0],
-  [ngraves@ngraves.fr], [stguix],
-  [https://git.sr.ht/~ngraves/stguix/])
+  [ngraves@ngraves.fr], [guix-stack],
+  [https://git.sr.ht/~ngraves/guix-stack/])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([color-tests -Wall -Wno-portability foreign])
 AM_SILENT_RULES([yes])

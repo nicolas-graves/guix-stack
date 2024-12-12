@@ -1,7 +1,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;; Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
 
-(define-module (stguix scripts pull)
+(define-module (guix-stack scripts pull)
   #:use-module (guix channels)
   #:use-module ((guix diagnostics) #:select (leave))
   #:use-module (guix gexp)
@@ -17,12 +17,12 @@
   #:use-module (git)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-71)
-  #:export (stacked-pull))
+  #:export (stack-pull))
 
 ;; TODO: Would be good to avoid those awful reload-module invocations.
-;; TODO: Add a --force option to go straight to stacked-force-pull if necessary.
+;; TODO: Add a --force option to go straight to stack-force-pull if necessary.
 
-(define (stacked-parse-command-line args)
+(define (stack-parse-command-line args)
   (eval
    `(begin
       (reload-module (current-module))
@@ -35,16 +35,15 @@
                           #:argument-handler no-arguments))
    (resolve-module '(guix scripts pull) #:ensure #f)))
 
-(define* (stacked-pull #:key (args (list "--allow-downgrades"
+(define* (stack-pull #:key (args (list "--allow-downgrades"
                                          "--disable-authentication")))
-  "Call `stacked-force-pull' if there are new commits in source directories."
+  "Call `stack-force-pull' if there are new commits in source directories."
   (with-error-handling
     (with-git-error-handling
-     (let* ((opts (stacked-parse-command-line args))
+     (let* ((opts (stack-parse-command-line args))
             (profile (or (assoc-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
             ;; This is more powerful but also more dangerous than load-channels
-            (_ (pk 'u current-channels))
             (read-channels (primitive-load (assoc-ref opts 'channel-file)))
             (channels instances (partition channel? read-channels))
             (next-channels (pk 'nc (append
@@ -81,15 +80,15 @@
                                  (make-string 40 #\0)))))
                 current-channels))
         (display "Pull: Nothing to be done.\n")
-        (stacked-force-pull ; Add preloaded options to avoid laoding them twice.
+        (stack-force-pull ; Add preloaded options to avoid laoding them twice.
          #:channels channels
          #:instances instances
          #:opts opts))))))
 
-(define* (stacked-force-pull #:key
-                             (channels '())
-                             (instances '())
-                             (opts '()))
+(define* (stack-force-pull #:key
+                           (channels '())
+                           (instances '())
+                           (opts '()))
   "Lightly modified version of `guix pull'."
 
   (eval

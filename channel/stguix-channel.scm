@@ -2,7 +2,7 @@
 ;;; Copyright © 2018-2022 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
 
-(define-module (stguix-channel))
+(define-module (guix-stack-channel))
 
 (use-modules (ice-9 vlist)
              (ice-9 match)
@@ -94,24 +94,21 @@ returns a boolean to determine whether rewriting should continue."
    #:deep? #false
    #:cut?
    (lambda (p)
-     (not (or (string=? (package-name p) "gwl")
-              (string-prefix? "guile-"
+     (not (or (string-prefix? "guile-"
                               (package-name p)))))))
 
 (define p
   with-guix-guile-instead-of-any-guile)
 
-(define-public stguix/devel
+(define-public guix-stack/devel
   (package
-    ;; (inherit stguix)
-    (name "stguix")
-    (synopsis "")
-    (description "")
-    (license #f)
-    (source #f)
+    (name "guix-stack")
+    (source (local-file
+             "guix-stack"
+             (dirname (dirname (current-filename)))
+             #:recursive? #t))
     (version "0.0.0")
     (build-system gnu-build-system)
-    (home-page "")
     (arguments
      '(#:make-flags
        '("GUILE_AUTO_COMPILE=0")))
@@ -119,26 +116,31 @@ returns a boolean to determine whether rewriting should continue."
      (list guix guix-guile (p guile-git) (p guile-config)))
     (native-inputs
      (append
-         (list autoconf automake pkg-config texinfo graphviz)
-         (list
-          coreutils
+      (list autoconf automake pkg-config texinfo graphviz)
+      (list
+       coreutils
 
-          ;; for make distcheck
-          texlive-scheme-basic
+       ;; for make distcheck
+       texlive-scheme-basic
 
-          sed
+       sed
 
-          ;; For "make release"
-          perl
-          git-minimal
+       ;; For "make release"
+       perl
+       git-minimal
 
-          ;; For manual post processing
-          guile-lib
-          rsync
+       ;; For manual post processing
+       guile-lib
+       rsync
 
-          ;; For "git push"
-          openssh-sans-x
+       ;; For "git push"
+       openssh-sans-x
 
-          ;; For dynamic development
-          guile-next
-          guile-ares-rs)))))
+       ;; For dynamic development
+       guile-next
+       guile-ares-rs)))
+    (home-page "https://git.sr.ht/~ngraves/guix-stack")
+    (synopsis "Tools for local development on GNU Guix")
+    (description "This package provides a guix extension to with
+helpful tools for local development.")
+    (license license:gpl3+)))
