@@ -1,0 +1,71 @@
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; Copyright © 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
+
+(define-module (guix extensions stacked)
+  #:use-module (guix scripts)
+  #:use-module (ice-9 format)
+  #:use-module (ice-9 match)
+  #:export (guix-stacked))
+
+;; IMPORTANT: We must avoid loading any modules from StGuix here,
+;; because we need to adjust the guile load paths first.  It's okay to
+;; import modules from core Guile and (guix scripts) though.
+
+
+;;;
+;;; Entry point.
+;;;
+
+(define-command (guix-stacked . args)
+  (category extension)
+  (synopsis "pull and patch the latest revision of Guix")
+
+  (match (command-line)
+    ((guix stacked . args)
+     (apply execl "@GUILE@" "@GUILE@" "-q"
+            "-c"
+            (format #false "~y"
+                    '(begin
+                       (define (replace-load-paths!)
+                         (let ((own-load-path
+                                (if (getenv "GWL_UNINSTALLED")
+                                    (list "@abs_top_srcdir@"
+                                          "@abs_top_builddir@")
+                                    (list "@guilemoduledir@")))
+                               (own-load-compiled-path
+                                (if (getenv "GWL_UNINSTALLED")
+                                    (list "@abs_top_srcdir@"
+                                          "@abs_top_builddir@")
+                                    (list "@guileobjectdir@"))))
+                           ;; Override load paths
+                           (set! %load-path
+                                 (append own-load-path
+                                     ;; This is a placeholder for Guile's own pristine load path.
+                                     (list (%library-dir) (%site-dir)
+                                           (%global-site-dir) (%package-data-dir))
+                                   ;; When building in an impure environment this
+                                   ;; variable may contain locations that collide with
+                                   ;; Guile's own load path, so we put it at the very
+                                   ;; end.  We add it for all the additional Guile
+                                   ;; packages.
+                                   (parse-path "@GUILE_LOAD_PATH@")))
+                           (set! %load-compiled-path
+                                 (append own-load-compiled-path
+                                     ;; This is Guile's own pristine load path for
+                                     ;; compiled modules.
+                                     (let ((ccache (%site-ccache-dir)))
+                                       (list (string-append
+                                              (string-drop-right ccache
+                                                                 (string-length "site-ccache"))
+                                              "ccache")
+                                             ccache))
+                                   ;; When building in an impure environment this
+                                   ;; variable may contain locations that collide with
+                                   ;; Guile's own load path, so we put it at the very
+                                   ;; end.  We add it for all the additional Guile
+                                   ;; packages.
+                                   (parse-path "@GUILE_LOAD_COMPILED_PATH@")))))
+                       (replace-load-paths!)
+                       (apply (@ (stguix main) guix-stacked-main) (command-line))))
+            "--" args))))

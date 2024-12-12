@@ -1,0 +1,11 @@
+*.go
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+build-aux/
+config.log
+config.status
+configure
+pre-inst-env
+guix/extensions/stacked.scm
