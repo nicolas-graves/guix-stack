@@ -1,3 +1,2 @@
-(use-modules (guix profiles) (guix-stack-channel))
-;; guix shell -L src -m manifest.scm
+(use-modules (guix-stack-channel))
 (package->development-manifest guix-stack/devel)

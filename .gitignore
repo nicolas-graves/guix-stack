@@ -8,4 +8,4 @@ config.log
 config.status
 configure
 pre-inst-env
-src/guix/extensions/stack.scm
+guix/extensions/stack.scm
