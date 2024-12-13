@@ -7,15 +7,15 @@ moddir=$(prefix)/share/guile/site/$(GUILE_EFFECTIVE_VERSION)
 godir=$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/site-ccache
 
 SOURCES =                                                 \
-  guix-stack/main.scm                                         \
-  guix-stack/scripts/pull.scm
+  src/guix-stack/main.scm                                         \
+  src/guix-stack/scripts/pull.scm
 
 extensionsdir = $(prefix)/share/guix/extensions
 dist_extensions_DATA =                                    \
-  guix/extensions/stack.scm
+  src/guix/extensions/stack.scm
 
 EXTRA_DIST +=      \
-  guix/extensions/stack.scm.in \
+  src/guix/extensions/stack.scm.in \
   pre-inst-env.in
 
 # Handle substitution of fully-expanded Autoconf variables.
@@ -36,4 +36,4 @@ guix/extensions/stack.scm: guix/extensions/stack.scm.in Makefile
 	mv -f "$@-t" "$@"
 
 CLEANFILES += \
-guix/extensions/stack.scm
+  src/guix/extensions/stack.scm
