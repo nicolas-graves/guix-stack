@@ -18,7 +18,7 @@
     (with-error-handling
       (match (car command-args)
         ("pull"
-         (stack-pull #:args (cdr command-args)))
+         (stack-pull (cdr command-args)))
         (_
          (format (current-error-port)
                  "guix-stack: missing or unknown command name~%"))))))

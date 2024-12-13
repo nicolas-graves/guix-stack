@@ -11,10 +11,13 @@
   #:use-module ((guix scripts build)
                 #:select (set-build-options-from-command-line))
   ;; #:use-module (guix scripts pull)
+  #:use-module (guix derivations)
+  #:use-module (guix monads)
   #:use-module (guix status)
   #:use-module (guix store)
   #:use-module ((guix ui) #:select (with-error-handling))
   #:use-module (git)
+  #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-71)
   #:export (stack-pull))
@@ -85,55 +88,65 @@ OPTS (resulting from '--url', '--commit', or '--branch'), if any."
 
    (resolve-module '(guix scripts pull) #:ensure #f)))
 
-(define* (stack-pull #:key (args (list "--allow-downgrades"
-                                       "--disable-authentication")))
+(define* (stack-pull args)
   "Call `stack-force-pull' if there are new commits in source directories."
+  (define channel-or-instance-name
+    (match-lambda
+      ((? channel? this-channel)
+       (channel-name this-channel))
+      ((? channel-instance? this-instance)
+       (channel-name
+        (channel-instance-channel this-instance)))))
+
   (with-error-handling
     (with-git-error-handling
      (let* ((opts (stack-parse-command-line args))
             (profile (or (assoc-ref opts 'profile) %current-profile))
-            (current-channels (profile-channels profile))
-            (read-channels (channel-or-instance-list
-                            (assoc-ref opts 'channel-file)))
-            (channels instances (partition channel? read-channels))
-            (next-channels (pk 'nc (append
-                                    channels
-                                    (map
-                                     (lambda (instance)
-                                       (let ((this-channel
-                                              (channel-instance-channel instance)))
-                                         (if (file-like?
-                                              (channel-instance-checkout instance))
-                                             (channel (inherit this-channel)
-                                                      (commit #f))
-                                             this-channel)))
-                                     instances)))))
+            (current-channels (profile-channels (pk 'profile profile)))
+            (read-channels-and-instances (channel-or-instance-list opts)))
        (if
         (and
-         (eq? (length current-channels) (length next-channels))
+         (null? (lset-difference eq?
+                                 (map channel-name current-channels)
+                                 (map channel-or-instance-name
+                                      read-channels-and-instances)))
          (every (lambda (current)
-                  (let* ((next-channel (find
-                                        (lambda (channel)
-                                          (eq? (channel-name channel)
-                                               (channel-name current)))
-                                        next-channels)))
-                    (string= (channel-commit current)
-                             (or (channel-commit next-channel)
-                                 (pk 'next
-                                     (let ((url (channel-url next-channel)))
-                                       (and (file-exists? url)
-                                            (oid->string
-                                             (object-id
-                                              (revparse-single
-                                               (repository-open url)
-                                               (channel-branch next-channel)))))))
-                                 (make-string 40 #\0)))))
+                  (pk 'current current)
+                  (match (pk 'next (find
+                                    (lambda (candidate)
+                                      (eq? (channel-name current)
+                                           (channel-or-instance-name candidate)))
+                                    read-channels-and-instances))
+                    ((? channel? next)
+                     (pk '=
+                         (string= (channel-commit current)
+                                  (or (channel-commit next)
+                                      (and=> (repository-open (channel-url next))
+                                             (lambda (repo)
+                                               (oid->string
+                                                (object-id
+                                                 (revparse-single
+                                                  repo
+                                                  (channel-branch next))))))
+                                      (make-string 40 #\0)))))
+                    ((? channel-instance? next)
+                     (eq? (channel-url current)
+                          (with-store store
+                            (run-with-store store
+                              (mlet* %store-monad
+                                  ((source (lower-object
+                                            (channel-instance-checkout next)))
+                                   (_ (built-derivations (list source))))
+                                (return (derivation->output-path source)))))))
+                    (_ #f)))
                 current-channels))
         (display "Pull: Nothing to be done.\n")
-        (stack-force-pull ; Add preloaded options to avoid laoding them twice.
-         #:channels channels
-         #:instances instances
-         #:opts opts))))))
+        (let ((channels instances
+                        (partition channel? read-channels-and-instances)))
+          (stack-force-pull ; Add preloaded options to avoid laoding them twice.
+           #:channels channels
+           #:instances instances
+           #:opts opts)))))))
 
 (define* (stack-force-pull #:key
                            (channels '())
