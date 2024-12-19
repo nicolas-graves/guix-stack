@@ -106,10 +106,10 @@ OPTS (resulting from '--url', '--commit', or '--branch'), if any."
             (read-channels-and-instances (channel-or-instance-list opts)))
        (if
         (and
-         (null? (lset-difference eq?
-                                 (map channel-name current-channels)
-                                 (map channel-or-instance-name
-                                      read-channels-and-instances)))
+         (null? (lset-xor eq?
+                          (map channel-name current-channels)
+                          (map channel-or-instance-name
+                               read-channels-and-instances)))
          (every (lambda (current)
                   (pk 'current current)
                   (match (pk 'next (find
