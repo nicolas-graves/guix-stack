@@ -128,35 +128,3 @@ returns a boolean to determine whether rewriting should continue."
    (description "This package provides a guix extension to with
 helpful tools for local development.")
    (license license:gpl3+)))
-
-(define-public guix-stack/devel
-  (package
-   (inherit guix-stack)
-   (name "guix-stack-devel")
-   (inputs
-    (list guix guix-guile (p guile-git)))
-   (native-inputs
-    (append
-     (list autoconf automake pkg-config texinfo graphviz)
-     (list
-      coreutils
-
-      ;; for make distcheck
-      texlive-scheme-basic
-
-      sed
-
-      ;; For "make release"
-      perl
-      git-minimal
-
-      ;; For manual post processing
-      guile-lib
-      rsync
-
-      ;; For "git push"
-      openssh-sans-x
-
-      ;; For dynamic development
-      guile-next
-      guile-ares-rs)))))
