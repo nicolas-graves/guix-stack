@@ -102,29 +102,29 @@ returns a boolean to determine whether rewriting should continue."
 (define p
   with-guix-guile-instead-of-any-guile)
 
-(define commit "4ec2625f0167d4b4c5dc8f7d776e81356d3d3856")
-
 (define-public guix-stack
-  (package
-   (name "guix-stack")
-   (version (git-version "0.0.0" "0" (string-take commit 7)))
-   (source
-    (git-checkout
-     (url "https://git.sr.ht/~ngraves/guix-stack")
-     (commit commit)))
-   (build-system gnu-build-system)
-   (arguments
-    '(#:make-flags
-      '("GUILE_AUTO_COMPILE=0")))
-   (inputs
-    (let ((p (package-input-rewriting
-              `((,guile-3.0 . ,guile-3.0-latest))
-              #:deep? #false)))
-      (list guix guile-3.0-latest (p guile-git))))
-   (native-inputs
-    (list autoconf automake pkg-config texinfo graphviz))
-   (home-page "https://git.sr.ht/~ngraves/guix-stack")
-   (synopsis "Tools for local development on GNU Guix")
-   (description "This package provides a guix extension to with
+  (let ((commit "46f5434bd1c11e1818c1155e4cd21d95f4f09f10")
+        (revision "1"))
+    (package
+      (name "guix-stack")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (git-checkout
+        (url "https://git.sr.ht/~ngraves/guix-stack")
+        (commit commit)))
+      (build-system gnu-build-system)
+      (arguments
+       '(#:make-flags
+         '("GUILE_AUTO_COMPILE=0")))
+      (inputs
+       (let ((p (package-input-rewriting
+                 `((,guile-3.0 . ,guile-3.0-latest))
+                 #:deep? #false)))
+         (list guix guile-3.0-latest (p guile-git))))
+      (native-inputs
+       (list autoconf automake pkg-config texinfo graphviz))
+      (home-page "https://git.sr.ht/~ngraves/guix-stack")
+      (synopsis "Tools for local development on GNU Guix")
+      (description "This package provides a guix extension to with
 helpful tools for local development.")
-   (license license:gpl3+)))
+      (license license:gpl3+))))
