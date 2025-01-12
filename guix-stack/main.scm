@@ -17,9 +17,9 @@
 (define (guix-stack-main . args)
   (with-error-handling
    (match (cddr args)
-     (("pull" rest)
+     (("pull" rest ...)
       (stack-pull rest))
-     (("install-hook" rest)
+     (("install-hook" rest ...)
       (stack-install-hook rest))
      (_
       (format (current-error-port)
