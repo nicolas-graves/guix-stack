@@ -12,7 +12,7 @@
   "Install `git-metadata-record' as a git `sendemail-validate' hook,
 in the current directory."
   (let ((hook (string-append
-               (dirname (dirname (current-filename)))
+               (dirname (dirname (dirname (current-filename))))
                "/files/git-metadata-record"))
         (destination (string-append (getcwd) "/.git")))
     (match destination
@@ -22,11 +22,14 @@ in the current directory."
       ((? file-exists?)
        (let ((line (call-with-input-file destination read-line)))
          (if (string-prefix? "gitdir: " line)
-             (copy-file hook
-                        (string-append
-                         (canonicalize-path
-                          (string-drop line (string-length "gitdir: ")))
-                         "/hooks/sendemail-validate"))
+             (let ((destination (canonicalize-path
+                                 (string-drop
+                                  line (string-length "gitdir: ")))))
+               (if (directory-exists? destination)
+                   (copy-file hook
+                              (string-append
+                               destination "/hooks/sendemail-validate"))
+                   (throw 'unable-to-find-git-dir destination)))
              (throw 'unable-to-read-git-dir destination))))
       (_
        (throw 'unable-to-find-git-dir destination)))))
