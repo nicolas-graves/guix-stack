@@ -1,7 +1,8 @@
 (use-modules (guix-stack-channel)
              (guix gexp)
              (guix git-download)
-             (guix packages))
+             (guix packages)
+             (ice-9 match))
 
 (define-public guix-stack/devel
   (package
@@ -41,4 +42,7 @@
     ;;    guile-ares-rs)))
     ))
 
-(package->development-manifest guix-stack/devel)
+(match (cadr (command-line))
+  ("build" guix-stack/devel)
+  ("shell" (package->development-manifest guix-stack/devel))
+  (_ (package->development-manifest guix-stack/devel)))
