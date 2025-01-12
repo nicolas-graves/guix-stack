@@ -103,8 +103,8 @@ returns a boolean to determine whether rewriting should continue."
   with-guix-guile-instead-of-any-guile)
 
 (define-public guix-stack
-  (let ((commit "a5c9a514b0bcc84bb51300323de36f9cac67dae4")
-        (revision "5"))
+  (let ((commit "3bd38610739ed5886b5f801e0a849fde5f7feeee")
+        (revision "6"))
     (package
       (name "guix-stack")
       (version (git-version "0.0.0" revision commit))
