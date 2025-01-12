@@ -15,13 +15,12 @@
 ;;;
 
 (define (guix-stack-main . args)
-  (let ((command-args (cddr args)))
-    (with-error-handling
-      (match (car command-args)
-        ("pull"
-         (stack-pull (cdr command-args)))
-        ("install-hook"
-         (stack-install-hook (cdr command-args)))
-        (_
-         (format (current-error-port)
-                 "guix-stack: missing or unknown command name~%"))))))
+  (with-error-handling
+   (match (cddr args)
+     (("pull" rest)
+      (stack-pull rest))
+     (("install-hook" rest)
+      (stack-install-hook rest))
+     (_
+      (format (current-error-port)
+              "guix-stack: missing or unknown command name~%")))))
