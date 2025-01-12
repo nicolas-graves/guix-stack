@@ -7,7 +7,8 @@ moddir=$(prefix)/share/guile/site/$(GUILE_EFFECTIVE_VERSION)
 godir=$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/site-ccache
 
 SOURCES =                                                 \
-  guix-stack/main.scm                                         \
+  guix-stack/main.scm                                     \
+  guix-stack/scripts/hook.scm                             \
   guix-stack/scripts/pull.scm
 
 extensionsdir = $(prefix)/share/guix/extensions

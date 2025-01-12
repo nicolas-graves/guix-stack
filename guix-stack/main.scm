@@ -1,10 +1,11 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
-;;; Copyright © 2024 Nicolas Graves <ngraves@ngraves.
+;;; Copyright © 2024, 2025 Nicolas Graves <ngraves@ngraves.
 
 (define-module (guix-stack main)
   #:use-module ((guix ui) #:select (with-error-handling))
   #:use-module (guix scripts)
   #:use-module (guix-stack scripts pull)
+  #:use-module (guix-stack scripts hook)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:export (guix-stack-main))
@@ -19,6 +20,8 @@
       (match (car command-args)
         ("pull"
          (stack-pull (cdr command-args)))
+        ("install-hook"
+         (stack-install-hook (cdr command-args)))
         (_
          (format (current-error-port)
                  "guix-stack: missing or unknown command name~%"))))))
