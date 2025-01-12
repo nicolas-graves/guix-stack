@@ -14,7 +14,7 @@ in the current directory."
   (let ((hook (string-append
                (dirname (dirname (current-filename)))
                "/files/git-metadata-record"))
-        (destination (string-append (dirname (getcwd)) "/.git")))
+        (destination (string-append (getcwd) "/.git")))
     (match destination
       ((? directory-exists?)
        (copy-file hook
@@ -29,4 +29,4 @@ in the current directory."
                          "/hooks/sendemail-validate"))
              (throw 'unable-to-read-git-dir destination))))
       (_
-       (throw 'not-founding-git-dir destination)))))
+       (throw 'unable-to-find-git-dir destination)))))
