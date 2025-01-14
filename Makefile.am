@@ -8,6 +8,7 @@ godir=$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/site-ccache
 
 SOURCES =                                                 \
   guix-stack/main.scm                                     \
+  guix-stack/patchset.scm                                 \
   guix-stack/scripts/hook.scm                             \
   guix-stack/scripts/pull.scm
 
