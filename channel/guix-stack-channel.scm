@@ -54,12 +54,15 @@
                        (string-append
                         #$output "/share/guile/site/" guile-version))
                       (("@OWN_GUILE_LOAD_COMPILED_PATH@")
-                       (string-append
-                        #$output "/lib/guile/" guile-version "/site-ccache"))))))
+                       (string-append #$output "/lib/guile/"
+                                      guile-version "/site-ccache"))))))
               (add-before 'build 'install-hook
                 (lambda _
-                  (install-file "src/files/sendemail-validate"
-                                (string-append #$output "/share/git/hooks"))))
+                  (let ((hookdir (string-append #$output "/share/git/hooks")))
+                    (substitute* "src/guix-stack/scripts/hook.scm"
+                      (("@GIT_SENDEMAIL_VALIDATE_HOOK@")
+                       (string-append hookdir "/sendemail-validate")))
+                    (install-file "git/hooks/sendemail-validate" hookdir))))
               (add-before 'build 'install-guix-extension
                 (lambda _
                   (install-file

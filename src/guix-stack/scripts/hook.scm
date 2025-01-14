@@ -17,9 +17,11 @@
 (define* (stack-install-hook args)
   "Install `git-metadata-record' as a git `sendemail-validate' hook,
 in the current directory."
-  (let ((hook (string-append
-               (dirname (dirname (dirname (current-filename))))
-               "/files/sendemail-validate"))
+  (let ((hook (if (getenv "GUIX_STACK_UNINSTALLED")
+                  (string-append
+                   (dirname (dirname (dirname (current-filename))))
+                   "/git/hooks/sendemail-validate")
+                  "@GIT_SENDEMAIL_VALIDATE_HOOK@"))
         (gitdir (string-append (getcwd) "/.git")))
     (match gitdir
       ((? directory-exists?)
