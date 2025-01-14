@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Guix Stack - Tools for local development on GNU Guix
+# Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
+
+set -x
+
+# eval "$(guix shell -L channel -m manifest.scm --search-paths)"
+
+GUIX_STACK_UNINSTALLED="t"
+export GUIX_STACK_UNINSTALLED
+
+GUILE_AUTO_COMPILE=0
+export GUILE_AUTO_COMPILE
+
+GUILE_LOAD_PATH="${PWD}/src:${GUILE_LOAD_PATH}"
+export GUILE_LOAD_PATH
+
+GUIX_EXTENSIONS_PATH="${PWD}/src/guix/extensions:${GUIX_EXTENSIONS_PATH}"
+export GUIX_EXTENSIONS_PATH
+
+exec "$@"

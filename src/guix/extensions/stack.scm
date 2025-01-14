@@ -1,0 +1,81 @@
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;; Copyright © 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
+
+(define-module (guix extensions stack)
+  #:use-module ((guix build utils) #:select (which))
+  #:use-module (guix scripts)
+  #:use-module (ice-9 format)
+  #:use-module (ice-9 match)
+  #:export (guix-stack))
+
+;; IMPORTANT: We must avoid loading any modules from Guix stack here,
+;; because we need to adjust the guile load paths first.  It's okay to
+;; import modules from core Guile and (guix scripts) though.
+
+
+;;;
+;;; Entry point.
+;;;
+
+(define-command (guix-stack . args)
+  (category extension)
+  (synopsis "pull and patch the latest revision of Guix")
+
+  (match (command-line)
+    ((guix stack . args)
+     (let ((guile (if (getenv "GUIX_STACK_UNINSTALLED")
+                      (which "guile")
+                      "@GUILE@")))
+       (apply
+        execl guile guile "-q" "-c"
+        (format #false "~y"
+                '(let ((uninstalled? (getenv "GUIX_STACK_UNINSTALLED")))
+                   (define (replace-load-paths!)
+                     (let ((own-load-path
+                            (if uninstalled?
+                                ;; Assumption: see ./pre-inst-env
+                                (list (car (string-split (getenv "GUIX_EXTENSIONS_PATH") #\:)))
+                                (list "@OWN_GUILE_LOAD_PATH@")))
+                           (own-load-compiled-path
+                            (if uninstalled?
+                                ;; Assumption: Do not try to compile when uninstalled
+                                (list "")
+                                (list "@OWN_GUILE_LOAD_COMPILED_PATH@"))))
+                       ;; Override load paths
+                       (set! %load-path
+                             (append own-load-path
+                                     ;; This is a placeholder for Guile's own pristine load path.
+                                     (list (%library-dir) (%site-dir)
+                                           (%global-site-dir) (%package-data-dir))
+                                     ;; When building in an impure environment this
+                                     ;; variable may contain locations that collide with
+                                     ;; Guile's own load path, so we put it at the very
+                                     ;; end.  We add it for all the additional Guile
+                                     ;; packages.
+                                     (parse-path
+                                      (if uninstalled?
+                                          (getenv "GUILE_LOAD_PATH")
+                                          "@GUILE_LOAD_PATH@"))))
+                       (set! %load-compiled-path
+                             (append own-load-compiled-path
+                                     ;; This is Guile's own pristine load path for
+                                     ;; compiled modules.
+                                     (let ((ccache (%site-ccache-dir)))
+                                       (list (string-append
+                                              (string-drop-right ccache
+                                                                 (string-length "site-ccache"))
+                                              "ccache")
+                                             ccache))
+                                     ;; When building in an impure environment this
+                                     ;; variable may contain locations that collide with
+                                     ;; Guile's own load path, so we put it at the very
+                                     ;; end.  We add it for all the additional Guile
+                                     ;; packages.
+                                     (parse-path
+                                      (if uninstalled?
+                                          (getenv "GUILE_LOAD_COMPILED_PATH")
+                                          "@GUILE_LOAD_COMPILED_PATH@"))))))
+                   (replace-load-paths!)
+                   (apply (@ (guix-stack main) guix-stack-main) (command-line))))
+        "--" args)))))

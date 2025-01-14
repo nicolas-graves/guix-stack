@@ -7,5 +7,3 @@ build-aux/
 config.log
 config.status
 configure
-pre-inst-env
-guix/extensions/stack.scm
