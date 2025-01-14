@@ -13,8 +13,7 @@
              ((guix licenses) #:prefix license:)
              (guix utils)
              (gnu packages package-management)
-             (gnu packages guile)
-             (rde packages))
+             (gnu packages guile))
 
 (define-public guix-stack
   (let ((commit "e968fdebd4ab6e3959e9dda49427b30d2d437edf")
