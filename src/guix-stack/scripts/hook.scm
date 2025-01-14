@@ -8,25 +8,31 @@
   #:use-module (ice-9 textual-ports)
   #:export (stack-install-hook))
 
+(define (install-hook hook hookdir)
+  (let ((destination (string-append hookdir "/sendemail-validate")))
+    (if (file-exists? destination)
+        (throw 'hook-already-present destination)
+        (install-file hook hookdir))))
+
 (define* (stack-install-hook args)
   "Install `git-metadata-record' as a git `sendemail-validate' hook,
 in the current directory."
   (let ((hook (string-append
                (dirname (dirname (dirname (current-filename))))
                "/files/sendemail-validate"))
-        (destination (string-append (getcwd) "/.git")))
-    (match destination
+        (gitdir (string-append (getcwd) "/.git")))
+    (match gitdir
       ((? directory-exists?)
-       (install-file hook (string-append destination "/hooks")))
+       (install-hook hook (string-append gitdir "/hooks")))
       ((? file-exists?)
-       (let ((line (call-with-input-file destination read-line)))
+       (let ((line (call-with-input-file gitdir read-line)))
          (if (string-prefix? "gitdir: " line)
-             (let ((destination (canonicalize-path
-                                 (string-drop
-                                  line (string-length "gitdir: ")))))
-               (if (directory-exists? destination)
-                   (install-file hook (string-append destination "/hooks"))
-                   (throw 'unable-to-find-git-dir destination)))
-             (throw 'unable-to-read-git-dir destination))))
+             (let* ((gitdir (canonicalize-path
+                             (string-drop
+                              line (string-length "gitdir: ")))))
+               (if (directory-exists? gitdir)
+                   (install-hook hook (string-append gitdir "/hooks"))
+                   (throw 'unable-to-find-git-dir gitdir)))
+             (throw 'unable-to-read-git-dir gitdir))))
       (_
-       (throw 'unable-to-find-git-dir destination)))))
+       (throw 'unable-to-find-git-dir gitdir)))))
