@@ -12,8 +12,9 @@
              (guix build-system guile)
              ((guix licenses) #:prefix license:)
              (guix utils)
-             (gnu packages package-management)
-             (gnu packages guile))
+             (gnu packages gawk)
+             (gnu packages guile)
+             (gnu packages package-management))
 
 (define-public guix-stack
   (let ((commit "e968fdebd4ab6e3959e9dda49427b30d2d437edf")
@@ -62,7 +63,7 @@
                    (string-append #$output "/share/guix/extensions"))
                   (delete-file-recursively "src/guix")))))))
       (inputs
-       (list guix guile-3.0 guile-git))
+       (list gawk guile-3.0 guile-git guix))
       (home-page "https://git.sr.ht/~ngraves/guix-stack")
       (synopsis "Tools for local development on GNU Guix")
       (description "This package provides a guix extension to with
