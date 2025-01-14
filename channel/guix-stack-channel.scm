@@ -56,6 +56,10 @@
                       (("@OWN_GUILE_LOAD_COMPILED_PATH@")
                        (string-append
                         #$output "/lib/guile/" guile-version "/site-ccache"))))))
+              (add-before 'build 'install-hook
+                (lambda _
+                  (install-file "src/files/sendemail-validate"
+                                (string-append #$output "/share/git/hooks"))))
               (add-before 'build 'install-guix-extension
                 (lambda _
                   (install-file
