@@ -2,7 +2,7 @@
 ;;; Copyright © 2025 Nicolas Graves <ngraves@ngraves.fr>
 
 (define-module (guix-stack scripts hook)
-  #:use-module ((guix build utils) #:select (directory-exists?))
+  #:use-module ((guix build utils) #:select (directory-exists? install-file))
   #:use-module (ice-9 match)
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 textual-ports)
@@ -13,12 +13,11 @@
 in the current directory."
   (let ((hook (string-append
                (dirname (dirname (dirname (current-filename))))
-               "/files/git-metadata-record"))
+               "/files/sendemail-validate"))
         (destination (string-append (getcwd) "/.git")))
     (match destination
       ((? directory-exists?)
-       (copy-file hook
-                  (string-append destination "/hooks/sendemail-validate")))
+       (install-file hook (string-append destination "/hooks")))
       ((? file-exists?)
        (let ((line (call-with-input-file destination read-line)))
          (if (string-prefix? "gitdir: " line)
@@ -26,9 +25,7 @@ in the current directory."
                                  (string-drop
                                   line (string-length "gitdir: ")))))
                (if (directory-exists? destination)
-                   (copy-file hook
-                              (string-append
-                               destination "/hooks/sendemail-validate"))
+                   (install-file hook (string-append destination "/hooks"))
                    (throw 'unable-to-find-git-dir destination)))
              (throw 'unable-to-read-git-dir destination))))
       (_
