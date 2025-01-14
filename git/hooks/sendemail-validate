@@ -27,7 +27,7 @@ BEGIN {
             } else if (arr[1] == "To") {
                 MAILING_LIST = arr[2]
             } else if (arr[1] == "Subject") {
-                if (match(arr[2], /^Subject: \[PATCH.* v([0-9]+)/, ver)) {
+                if (match(arr[2], /^Subject: \[PATCH.* v([0-9]+)\]/, ver)) {
                     VERSION = ver[1]
                 } else if (SUBJECT ~ /^Subject: \[PATCH.*/) {
                     VERSION = 1
