@@ -8,16 +8,22 @@
   #:use-module (ice-9 textual-ports)
   #:export (stack-install-hook))
 
-(define (install-hook hook hookdir)
+(define* (install-hook hook hookdir #:key (force? #f))
   (let ((destination (string-append hookdir "/sendemail-validate")))
-    (if (file-exists? destination)
-        (throw 'hook-already-present destination)
+    (if (pk 'e (file-exists? (pk 'd destination)))
+        (if force?
+            (begin
+              (delete-file destination)
+              (install-file hook hookdir))
+            (throw 'hook-already-present destination))
         (install-file hook hookdir))))
 
 (define* (stack-install-hook args)
   "Install `git-metadata-record' as a git `sendemail-validate' hook,
 in the current directory."
-  (let ((hook (if (getenv "GUIX_STACK_UNINSTALLED")
+  (let ((force? (or (member "-f" args)
+                    (member "--force" args)))
+        (hook (if (getenv "GUIX_STACK_UNINSTALLED")
                   (string-append
                    (dirname (dirname (dirname (current-filename))))
                    "/git/hooks/sendemail-validate")
@@ -25,7 +31,7 @@ in the current directory."
         (gitdir (string-append (getcwd) "/.git")))
     (match gitdir
       ((? directory-exists?)
-       (install-hook hook (string-append gitdir "/hooks")))
+       (install-hook hook (string-append gitdir "/hooks") #:force? force?))
       ((? file-exists?)
        (let ((line (call-with-input-file gitdir read-line)))
          (if (string-prefix? "gitdir: " line)
@@ -33,7 +39,8 @@ in the current directory."
                              (string-drop
                               line (string-length "gitdir: ")))))
                (if (directory-exists? gitdir)
-                   (install-hook hook (string-append gitdir "/hooks"))
+                   (install-hook hook (string-append gitdir "/hooks")
+                                 #:force? force?)
                    (throw 'unable-to-find-git-dir gitdir)))
              (throw 'unable-to-read-git-dir gitdir))))
       (_
