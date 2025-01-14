@@ -17,8 +17,8 @@
              (gnu packages package-management))
 
 (define-public guix-stack
-  (let ((commit "0caa40ed250bc1760bc42d1895478ecaa26ae85c")
-        (revision "15"))
+  (let ((commit "a199bce53fd801986ed1c2d50a45384f4cba83cd")
+        (revision "16"))
     (package
       (name "guix-stack")
       (version (git-version "0.0.0" revision commit))
