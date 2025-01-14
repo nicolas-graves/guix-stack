@@ -40,6 +40,7 @@ BEGIN {
     close(EMAIL_HEADERS)
 
     MESSAGE =                                   \
+        "guix-stack metadata v1\n\n"            \
         "List: " MAILING_LIST "\n"              \
         "Message-ID: " MESSAGE_ID "\n"          \
         "Version: " VERSION "\n"                \
