@@ -17,8 +17,8 @@
              (rde packages))
 
 (define-public guix-stack
-  (let ((commit "7dce79e344c80dccd348e6585843ca7264adba8a")
-        (revision "9"))
+  (let ((commit "e968fdebd4ab6e3959e9dda49427b30d2d437edf")
+        (revision "13"))
     (package
       (name "guix-stack")
       (version (git-version "0.0.0" revision commit))
