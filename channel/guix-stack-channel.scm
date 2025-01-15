@@ -8,6 +8,7 @@
              (guix packages)
              (guix gexp)
              (guix git)
+             (guix download)
              (guix git-download)
              (guix build-system guile)
              ((guix licenses) #:prefix license:)
@@ -15,6 +16,19 @@
              (gnu packages gawk)
              (gnu packages guile)
              (gnu packages package-management))
+
+(define guile-git-with-revwalker
+  (package
+    (inherit guile-git)
+    (source
+     (origin
+       (inherit (package-source guile-git))
+       (patches
+        (list
+         (origin
+           (method url-fetch)
+           (uri "https://lists.sr.ht/~ngraves/devel/%3C20250115001917.20631-2-ngraves@ngraves.fr%3E/raw")
+           (sha256 (base32 "1papq9lvzqnipwb2nvfwmm5xzs4ls6bvhndqn9k2ff52lkdbm5rh")))))))))
 
 (define-public guix-stack
   (let ((commit "a199bce53fd801986ed1c2d50a45384f4cba83cd")
@@ -70,7 +84,7 @@
                    (string-append #$output "/share/guix/extensions"))
                   (delete-file-recursively "src/guix")))))))
       (inputs
-       (list gawk guile-3.0 guile-git guix))
+       (list gawk guile-3.0 guile-git-with-revwalker guix))
       (home-page "https://git.sr.ht/~ngraves/guix-stack")
       (synopsis "Tools for local development on GNU Guix")
       (description "This package provides a guix extension to with
