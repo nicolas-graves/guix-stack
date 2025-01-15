@@ -32,8 +32,8 @@
            (sha256 (base32 "1papq9lvzqnipwb2nvfwmm5xzs4ls6bvhndqn9k2ff52lkdbm5rh")))
          (origin
            (method url-fetch)
-           (uri "https://lists.sr.ht/~ngraves/devel/%3C20250115025710.32043-1-ngraves@ngraves.fr%3E/raw")
-           (sha256 (base32 "0i3n0pih2fp456kl4gfk72palhr28kbgki957rp93zf3bw07s2wv")))))))))
+           (uri "https://lists.sr.ht/~ngraves/devel/%3C20250115031232.8098-1-ngraves@ngraves.fr%3E/raw")
+           (sha256 (base32 "1i7kq0qxzb48l55ms0hqh09ywm1py8q9x660d04474l64ablbji1")))))))))
 
 (define-public guix-stack
   (let ((commit "1e2d349ac0cb83e7e4af5afd86a377667a041995")
