@@ -17,9 +17,10 @@
              (gnu packages guile)
              (gnu packages package-management))
 
-(define guile-git-with-revwalker
+(define-public guile-git-with-revwalker
   (package
     (inherit guile-git)
+    (name "guile-git-with-revwalker")
     (source
      (origin
        (inherit (package-source guile-git))
