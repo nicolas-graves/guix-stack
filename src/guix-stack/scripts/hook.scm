@@ -8,9 +8,17 @@
   #:use-module (ice-9 textual-ports)
   #:export (stack-install-hook))
 
+(define* (set-git-config-options! repository)
+  "Set the required git config options in the given REPOSITORY."
+  (let* ((config (repository-config repository)))
+    (set-config-boolean config "notes.rewrite.rebase" #t)
+    (set-config-boolean config "notes.rewrite.amend" #t)
+    (set-config-string config "notes.rewriteRef" "refs/notes/commits")
+    (repository-close! repository)))
+
 (define* (install-hook hook hookdir #:key (force? #f))
   (let ((destination (string-append hookdir "/sendemail-validate")))
-    (if (pk 'e (file-exists? (pk 'd destination)))
+    (if (file-exists? destination)
         (if force?
             (begin
               (delete-file destination)
@@ -20,7 +28,7 @@
 
 (define* (stack-install-hook args)
   "Install `git-metadata-record' as a git `sendemail-validate' hook,
-in the current directory."
+in the current directory and set git config options."
   (let ((force? (or (member "-f" args)
                     (member "--force" args)))
         (hook (if (getenv "GUIX_STACK_UNINSTALLED")
@@ -28,7 +36,9 @@ in the current directory."
                    (dirname (dirname (dirname (current-filename))))
                    "/git/hooks/sendemail-validate")
                   "@GIT_SENDEMAIL_VALIDATE_HOOK@"))
-        (gitdir (string-append (getcwd) "/.git")))
+        (cwd (getcwd))
+        (gitdir (string-append cwd "/.git")))
+    (set-git-config-options! cwd)
     (match gitdir
       ((? directory-exists?)
        (install-hook hook (string-append gitdir "/hooks") #:force? force?))
