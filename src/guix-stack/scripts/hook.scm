@@ -24,9 +24,12 @@
         (if force?
             (begin
               (delete-file destination)
-              (install-file hook hookdir))
+              (mkdir-p hookdir)
+              (copy-file hook destination))
             (throw 'hook-already-present destination))
-        (install-file hook hookdir))))
+        (begin
+          (mkdir-p hookdir)
+          (install-file hook hookdir)))))
 
 (define* (stack-install-hook args)
   "Install `git-metadata-record' as a git `sendemail-validate' hook,
@@ -36,7 +39,7 @@ in the current directory and set git config options."
          (hook (if (getenv "GUIX_STACK_UNINSTALLED")
                    (string-append
                     (dirname (dirname (dirname (current-filename))))
-                    "/git/hooks/sendemail-validate")
+                    "/git/hooks/sendemail-validate.awk")
                    "@GIT_SENDEMAIL_VALIDATE_HOOK@"))
          (cwd (getcwd))
          (gitdir (string-append cwd "/.git")))

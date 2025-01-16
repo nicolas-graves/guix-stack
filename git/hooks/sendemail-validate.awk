@@ -11,6 +11,7 @@
 
 BEGIN {
     NUMBER_PATCHES = ENVIRON["GIT_SENDEMAIL_FILE_TOTAL"]
+    VERSION = 1
     if (ENVIRON["GIT_SENDEMAIL_FILE_COUNTER"] != NUMBER_PATCHES) {
         print "Skipping commit: Not the last patch in the series."
         exit 0
@@ -27,16 +28,18 @@ BEGIN {
             } else if (arr[1] == "To") {
                 MAILING_LIST = arr[2]
             } else if (arr[1] == "Subject") {
-                if (match(arr[2], /^\[PATCH.*\sv([0-9]+)\s*[0-9]*\/?([0-9]+)?\]/, ver)) {
-                    VERSION = ver[1]
-                    if(NUMBER_PATCHES > 1 && ver[2] == NUMBER_PATCHES - 1) {
-                        # There was a cover letter in the patch series.
-                        NUMBER_PATCHES--
+                if (match(arr[2], /^\[PATCH((\s[^ ]+)+)\]/, out)) {
+                    n = split(out[1], parts, " ")
+                    for (i = 1; i in parts; i++) {
+                        if (match (parts[i], /v([0-9]+)/, ver)) {
+                            VERSION = ver[1]
+                        } else if (match (parts[i], /[0-9]+\/([0-9]+)/, nb)) {
+                            # Useful when there is a cover letter.
+                            NUMBER_PATCHES = nb[1]
+                        }
+                        # We can possibly match a subjectPrefix in the last case.
+                        # But we already know the project at that point, so why would we?
                     }
-                } else if (arr[1] ~ /^\[PATCH.*/) {
-                    VERSION = 1
-                } else {
-                    VERSION = ""
                 }
             }
         }
@@ -47,12 +50,16 @@ BEGIN {
         "guix-stack metadata v1\n\n"            \
         "List: " MAILING_LIST "\n"              \
         "Message-ID: " MESSAGE_ID "\n"          \
-        "Version: " VERSION "\n"                \
+        "Version: " VERSION "\n"  \
         "Number-Patches: " NUMBER_PATCHES
-    # print "DEBUG: MESSAGE = " MESSAGE
+    # print "DEBUG: MESSAGE = " MESSAGE > /dev/stderr
 
-    print "Adding a git note for the patch series."
-    system("git notes add HEAD --force --message \"" MESSAGE "\"")
 
+    if ("GUIX_STACK_TEST" in ENVIRON) {
+        print MESSAGE
+    } else {
+        print "Adding a git note for the patch"
+        system("git notes add HEAD --force --message \"" MESSAGE "\"")
+    }
     exit 0
 }
