@@ -1,4 +1,6 @@
 ;; Plain copy of (gider test-runners)
+;; This is because srfi-64 is almost unusable quickly.
+;; Even this one is bad, I could only debug through ares/arei
 (define-module (test-runners)
   ;; Needed for fold-module-public-variables
   ;; TODO: later remove this dependency
@@ -286,60 +288,3 @@ given string in an ANSI escape code."
         (test-group "RERUN TESTS"
           (map (lambda (t) (run-test t #:runner runner)) filtered-tests)))))
   runner)
-
-;; (set! %previous-runner (run-project-tests))
-;; (rerun-tests %previous-runner
-;;              #:filter-fn (lambda (x) (equal? 'fail (assoc-ref x 'status))))
-
-;; (module-clear! (resolve-module '(rde serializers nginx-test)))
-;; (get-module-tests (resolve-module '(rde serializers nginx-test)))
-
-;; (run-module-tests (resolve-module '(rde serializers nginx-test)))
-
-;; (use-modules (ice-9 pretty-print))
-
-;; (rerun-tests %previous-runner)
-;; (define prev-runner (test-runner-default))
-
-;; (let ((runner %previous-runner))
-;;   (run-module-tests
-;;    (resolve-module '(rde serializers nginx-test))
-;;    #:runner runner)
-;;   (pretty-print (test-runner-test-results runner)))
-
-;; (re-run-failed-tests prev-runner)
-
-;; https://www.mail-archive.com/geiser-users%40nongnu.org/msg00323.html
-;; https://rednosehacker.com/revisiting-guile-xunit
-
-;; Test runners:
-;; https://github.com/aconchillo/guile-json/blob/master/tests/runner.scm
-;; https://luis-felipe.gitlab.io/guile-proba/
-;; https://git.systemreboot.net/run64/tree/bin/run64
-;; https://framagit.org/Jeko/guile-spec
-
-;; Common lisp testing frameworks:
-;; https://sabracrolleton.github.io/testing-framework
-
-;; Clojure testing libraries:
-;; https://jakemccrary.com/blog/2014/06/22/comparing-clojure-testing-libraries-output/
-
-;; Scheme testing libraries:
-;; https://github.com/tali713/mit-scheme/blob/master/tests/unit-testing.scm
-;; https://code.call-cc.org/svn/chicken-eggs/release/5/test/trunk/test.scm
-
-;; (define-test our-super-test-suite
-;;   (test-group "Something"
-;;     (few asserts)))
-
-;; (run-tests
-;;  test-runner
-;;  ;; (select-all-loaded-tests)
-;;  (select-only-every-second-loaded-test))
-
-;; TODO:
-;; - Make test-assert to show line, where it fails.
-;; - Implement test-match, which uses ice-9 match like patterns and provides
-;;   meaningful report.
-
-;; - Write ADR for serializers or/and implement template/interface for serializers.
