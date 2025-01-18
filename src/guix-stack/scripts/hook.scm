@@ -18,6 +18,24 @@
     (set-config-string config "notes.rewriteRef" "refs/notes/commits")
     (repository-close! repository)))
 
+;; MAYBE : make it work when not in project root?
+(define (find-hook-directory)
+  (match (string-append (getcwd) "/.git")
+    ((? directory-exists? gitdir)
+     (string-append gitdir "/hooks"))
+    ((? file-exists? gitdir)
+     (let ((line (call-with-input-file gitdir read-line)))
+       (if (string-prefix? "gitdir: " line)
+           (let* ((gitdir (canonicalize-path
+                           (string-drop
+                            line (string-length "gitdir: ")))))
+             (if (directory-exists? gitdir)
+                 (string-append gitdir "/hooks")
+                 (throw 'unable-to-find-git-dir gitdir)))
+           (throw 'unable-to-read-git-dir gitdir))))
+    (_
+     (throw 'unable-to-find-git-dir gitdir))))
+
 (define* (install-hook hook hookdir #:key (force? #f))
   (let ((destination (string-append hookdir "/sendemail-validate")))
     (if (file-exists? destination)
@@ -32,7 +50,7 @@
           (install-file hook hookdir)))))
 
 (define* (stack-install-hook args)
-  "Install `git-metadata-record' as a git `sendemail-validate' hook,
+  "Install `sendemail-validate.awk' as a git `sendemail-validate' hook,
 in the current directory and set git config options."
   (let* ((force? (or (member "-f" args)
                      (member "--force" args)))
@@ -41,22 +59,6 @@ in the current directory and set git config options."
                     (dirname (dirname (dirname (current-filename))))
                     "/git/hooks/sendemail-validate.awk")
                    "@GIT_SENDEMAIL_VALIDATE_HOOK@"))
-         (cwd (getcwd))
-         (gitdir (string-append cwd "/.git")))
-    (set-git-config-options! cwd)
-    (match gitdir
-      ((? directory-exists?)
-       (install-hook hook (string-append gitdir "/hooks") #:force? force?))
-      ((? file-exists?)
-       (let ((line (call-with-input-file gitdir read-line)))
-         (if (string-prefix? "gitdir: " line)
-             (let* ((gitdir (canonicalize-path
-                             (string-drop
-                              line (string-length "gitdir: ")))))
-               (if (directory-exists? gitdir)
-                   (install-hook hook (string-append gitdir "/hooks")
-                                 #:force? force?)
-                   (throw 'unable-to-find-git-dir gitdir)))
-             (throw 'unable-to-read-git-dir gitdir))))
-      (_
-       (throw 'unable-to-find-git-dir gitdir)))))
+         (hookdir (find-hook-directory)))
+    (set-git-config-options! (getcwd))
+    (install-hook hook hookdir #:force? force?)))
