@@ -22,10 +22,12 @@ BEGIN {
 
     # Note: Only for lines, but multiline is not needed for those fields.
     while ((getline line < EMAIL_HEADERS) > 0) {
-        if (match(line, /^(Message-ID|To|Subject): (.*)/, arr)) {
+        if (match(line, /^(Message-ID|To|In-Reply-To|Subject): (.*)/, arr)) {
             if (arr[1] == "Message-ID") {
                 MESSAGE_ID = arr[2]
             } else if (arr[1] == "To") {
+                MAILING_LIST = arr[2]
+            } else if (arr[1] == "In-Reply-To") {
                 MAILING_LIST = arr[2]
             } else if (arr[1] == "Subject") {
                 if (match(arr[2], /^\[PATCH((\s[^ ]+)+)\]/, out)) {
@@ -46,11 +48,12 @@ BEGIN {
     }
     close(EMAIL_HEADERS)
 
-    MESSAGE =                                   \
-        "guix-stack metadata v1\n\n"            \
-        "List: " MAILING_LIST "\n"              \
-        "Message-ID: " MESSAGE_ID "\n"          \
-        "Version: " VERSION "\n"  \
+    MESSAGE =                                                      \
+        "guix-stack metadata v1\n\n"                               \
+        "List: " MAILING_LIST "\n"                                 \
+        "Message-ID: " MESSAGE_ID "\n"                             \
+        (IN_REPLY_TO ? "In-Reply-To: " IN_REPLY_TO "\n" : "")      \
+        "Version: " VERSION "\n"                                   \
         "Number-Patches: " NUMBER_PATCHES
     # print "DEBUG: MESSAGE = " MESSAGE > /dev/stderr
 
