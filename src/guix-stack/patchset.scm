@@ -21,7 +21,8 @@
   #:use-module (ice-9 match)
   #:use-module (guix build utils)
   #:export (maybe-instantiate-channel
-            patchset-reference))
+            patchset-reference
+            patchset-fetch))
 
 (define-record-type* <patchset-reference>
   patchset-reference make-patchset-reference
