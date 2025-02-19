@@ -24,7 +24,6 @@
   #:export (stack-pull))
 
 ;; TODO: Would be good to avoid those awful reload-module invocations.
-;; TODO: Add a --force option to go straight to stack-force-pull if necessary.
 
 (define (stack-parse-command-line args)
   (eval
@@ -34,10 +33,17 @@
       (define (no-arguments arg _)
         (leave (G_ "~A: extraneous argument~%") arg))
 
-      (let ((opts (parse-command-line ',args %options
-                                      (list %default-options)
-                                      #:argument-handler no-arguments))
-            (unsupported '(ref repository-url)))
+      (let* ((%options (cons*
+                        (option '(#\f "force") #f #f
+                                (lambda (opt name arg result)
+                                  (alist-cons 'force? #t result)))
+                        %options))
+             (%default-options (cons* (cons 'force? #f)
+                                      %default-options))
+             (opts (parse-command-line ',args %options
+                                       (list %default-options)
+                                       #:argument-handler no-arguments))
+             (unsupported '(ref repository-url)))
         (remove (lambda (item)
                   (member (car item) unsupported))
                 opts)))
@@ -136,11 +142,13 @@ FUTURES is a list of channel or channel-instance."
   (with-error-handling
     (with-git-error-handling
      (let* ((opts (stack-parse-command-line args))
-            (profile (or (assoc-ref opts 'profile) %current-profile))
+            (profile (or (assq-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
             (read-channels-and-instances (channel-or-instance-list opts)))
-       (if (are-channels-up-to-date? current-channels
-                                     read-channels-and-instances)
+       (if (or
+            (not (assq-ref opts 'force?))
+            (are-channels-up-to-date? current-channels
+                                      read-channels-and-instances))
         (display "Pull: Nothing to be done.\n")
         (let ((channels instances
                         (partition channel? read-channels-and-instances)))
