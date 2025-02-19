@@ -19,6 +19,7 @@
   #:use-module (git)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-71)
   #:export (stack-pull))
 
@@ -88,6 +89,40 @@ OPTS (resulting from '--url', '--commit', or '--branch'), if any."
 
    (resolve-module '(guix scripts pull) #:ensure #f)))
 
+(define (are-channels-up-to-date? current-channels futures)
+  "Check if CURRENT-CHANNELS need to be updated.
+
+FUTURES is a list of channel or channel-instance."
+  (and
+   (null? (lset-xor eq?
+                    (map channel-name current-channels)
+                    (map channel-or-instance-name futures)))
+   (every
+    (lambda (current)
+      (match (find
+              (cut eq? (channel-name current) (channel-or-instance-name <>))
+              futures)
+        ((? channel? next)
+         (string= (channel-commit current)
+                  (or (channel-commit next)
+                      (and=> (repository-open (channel-url next))
+                             (cut
+                              oid->string
+                              (object-id
+                               (revparse-single <> (channel-branch next)))))
+                      (make-string 40 #\0))))
+        ((? channel-instance? next)
+         (eq? (channel-url current)
+              (with-store store
+                (run-with-store store
+                  (mlet* %store-monad
+                      ((source (lower-object
+                                (channel-instance-checkout next)))
+                       (_ (built-derivations (list source))))
+                    (return (derivation->output-path source)))))))
+        (_ #f)))
+    current-channels)))
+
 (define* (stack-pull args)
   "Call `stack-force-pull' if there are new commits in source directories."
   (define channel-or-instance-name
@@ -104,43 +139,12 @@ OPTS (resulting from '--url', '--commit', or '--branch'), if any."
             (profile (or (assoc-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
             (read-channels-and-instances (channel-or-instance-list opts)))
-       (if
-        (and
-         (null? (lset-xor eq?
-                          (map channel-name current-channels)
-                          (map channel-or-instance-name
-                               read-channels-and-instances)))
-         (every (lambda (current)
-                  (match (find (lambda (candidate)
-                                 (eq? (channel-name current)
-                                      (channel-or-instance-name candidate)))
-                               read-channels-and-instances)
-                    ((? channel? next)
-                     (string= (channel-commit current)
-                              (or (channel-commit next)
-                                  (and=> (repository-open (channel-url next))
-                                         (lambda (repo)
-                                           (oid->string
-                                            (object-id
-                                             (revparse-single
-                                              repo
-                                              (channel-branch next))))))
-                                  (make-string 40 #\0))))
-                    ((? channel-instance? next)
-                     (eq? (channel-url current)
-                          (with-store store
-                            (run-with-store store
-                              (mlet* %store-monad
-                                  ((source (lower-object
-                                            (channel-instance-checkout next)))
-                                   (_ (built-derivations (list source))))
-                                (return (derivation->output-path source)))))))
-                    (_ #f)))
-                current-channels))
+       (if (are-channels-up-to-date? current-channels
+                                     read-channels-and-instances)
         (display "Pull: Nothing to be done.\n")
         (let ((channels instances
                         (partition channel? read-channels-and-instances)))
-          (stack-force-pull ; Add preloaded options to avoid laoding them twice.
+          (stack-force-pull ; Add preloaded options to avoid loading them twice.
            #:channels channels
            #:instances instances
            #:opts opts)))))))
