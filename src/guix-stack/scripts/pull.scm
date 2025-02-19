@@ -102,7 +102,7 @@ OPTS (resulting from '--url', '--commit', or '--branch'), if any."
     (with-git-error-handling
      (let* ((opts (stack-parse-command-line args))
             (profile (or (assoc-ref opts 'profile) %current-profile))
-            (current-channels (profile-channels (pk 'profile profile)))
+            (current-channels (profile-channels profile))
             (read-channels-and-instances (channel-or-instance-list opts)))
        (if
         (and
@@ -111,24 +111,21 @@ OPTS (resulting from '--url', '--commit', or '--branch'), if any."
                           (map channel-or-instance-name
                                read-channels-and-instances)))
          (every (lambda (current)
-                  (pk 'current current)
-                  (match (pk 'next (find
-                                    (lambda (candidate)
-                                      (eq? (channel-name current)
-                                           (channel-or-instance-name candidate)))
-                                    read-channels-and-instances))
+                  (match (find (lambda (candidate)
+                                 (eq? (channel-name current)
+                                      (channel-or-instance-name candidate)))
+                               read-channels-and-instances)
                     ((? channel? next)
-                     (pk '=
-                         (string= (channel-commit current)
-                                  (or (channel-commit next)
-                                      (and=> (repository-open (channel-url next))
-                                             (lambda (repo)
-                                               (oid->string
-                                                (object-id
-                                                 (revparse-single
-                                                  repo
-                                                  (channel-branch next))))))
-                                      (make-string 40 #\0)))))
+                     (string= (channel-commit current)
+                              (or (channel-commit next)
+                                  (and=> (repository-open (channel-url next))
+                                         (lambda (repo)
+                                           (oid->string
+                                            (object-id
+                                             (revparse-single
+                                              repo
+                                              (channel-branch next))))))
+                                  (make-string 40 #\0))))
                     ((? channel-instance? next)
                      (eq? (channel-url current)
                           (with-store store
