@@ -18,22 +18,22 @@
              (gnu packages package-management))
 
 (define-public guile-git-with-revwalker
-  (package
-    (inherit guile-git)
-    (name "guile-git-with-revwalker")
-    (source
-     (origin
-       (inherit (package-source guile-git))
-       (patches
-        (list
-         (origin
-           (method url-fetch)
-           (uri "https://lists.sr.ht/~ngraves/devel/%3C20250115001917.20631-2-ngraves@ngraves.fr%3E/raw")
-           (sha256 (base32 "1papq9lvzqnipwb2nvfwmm5xzs4ls6bvhndqn9k2ff52lkdbm5rh")))
-         (origin
-           (method url-fetch)
-           (uri "https://lists.sr.ht/~ngraves/devel/%3C20250115042525.29416-1-ngraves@ngraves.fr%3E/raw")
-           (sha256 (base32 "1nxy7wp6882x6cdcqywvy90q37dnlblibh62g584pycyvwx88hlp")))))))))
+  (let ((commit "03b709e5ee66a22b54d5774ea226a31df7e4bcf4")
+        (revision "0"))
+    (package
+      (inherit guile-git)
+      (name "guile-git")
+      (version (git-version "0.9.0" revision commit))
+      (home-page "https://gitlab.com/guile-git/guile-git.git")
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url home-page)
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "0jnq2snzq0zj2rmbfgzvxnzf4swfkj6air54ipxl6hyaxbli1873")))))))
 
 (define-public guix-stack
   (let ((commit "bd0b4f6")
