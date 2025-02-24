@@ -16,7 +16,6 @@
   #:use-module (guix status)
   #:use-module (guix store)
   #:use-module ((guix ui) #:select (with-error-handling))
-  #:use-module (guix-stack build channel)
   #:use-module (git)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
@@ -171,6 +170,7 @@ FUTURES is a list of channel or channel-instance."
   (eval
    `(begin
       (reload-module (current-module))
+      (use-modules (guix-stack build channel))
 
       (define* (local-build-and-install instances profile
                                         #:key (target-directory getcwd))
