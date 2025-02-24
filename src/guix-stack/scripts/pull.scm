@@ -159,7 +159,7 @@ Download and deploy the latest version of Guix.\n"))
                    (alist-cons 'force? #t result)))
          (option '("from-local-channels") #t #f
                  (lambda (opt name arg result)
-                   (alist-cons 'local-channels-dir #t result)))
+                   (alist-cons 'local-channels-dir arg result)))
          ;; XXX: End of Guix source code addition.
          (option '(#\q "no-channel-files") #f #f
                  (lambda (opt name arg result)
