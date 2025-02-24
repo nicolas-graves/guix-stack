@@ -921,7 +921,9 @@ FUTURES is a list of channel or channel-instance."
 
   (with-error-handling
     (with-git-error-handling
-     (let* ((opts (parse-command-line args))
+     (let* ((opts (parse-command-line args %options
+                                      (list %default-options)
+                                      #:argument-handler no-arguments))
             (profile (or (assq-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
             (read-channels-and-instances (channel-list opts)))
