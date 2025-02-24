@@ -108,7 +108,7 @@ This enables us not to try and run build steps when not necessary."
       (lambda args
         #f))))
 
-(define* (get-local-guix #:key (path (string-append (getcwd) "/guix")))
+(define (get-local-guix path)
   (with-store store
     (let* ((repo (repository-open path))
            (commit (oid->string
@@ -216,7 +216,7 @@ This enables us not to try and run build steps when not necessary."
                             (commit commit-ref)
                             (url home-page))))
        (match name
-         ("guix" (values (get-local-guix)
+         ("guix" (values (get-local-guix path)
                          ((@@ (guix channels) channel-instance)
                           local-channel commit-ref path)))
          (_
