@@ -292,7 +292,7 @@ This enables us not to try and run build steps when not necessary."
              ((@@ (guix channels) channel-instance)
               local-channel commit-ref path)))))))))
 
-(define* (local-channels->manifest names #:key (target-directory (getcwd)))
+(define (local-channels->manifest target-directory names)
 
   (define (local-channel->entry instance pkg)
     (let* ((channel (channel-instance-channel instance))
