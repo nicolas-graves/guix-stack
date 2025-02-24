@@ -87,7 +87,7 @@
         (lambda args
           (match args
             (('quit 0) #t)
-            (_         #f)))))))
+            (_ (begin (error args) #f))))))))
 
 (define (local-phases phases to-ignore path)
   "Modify phases to incorporate configured phases caching logic."
