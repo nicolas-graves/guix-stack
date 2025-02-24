@@ -15,13 +15,14 @@
 
 ;; The issue is that once resolved, you can't import more modules
 ;; inside the eval and that's quite limiting.
+
 ;; We switch here for another approach.  We won't try to minimize
 ;; lines of code in guix-stack but will favor maintainability by keeping
 ;; the code in this file as close as possible to guix upstream.
-;; This way running a diff will be easy and merging upstream changes will
-;; hopefully not be too difficult.
+;; This way auditing this code will be easy and merging upstream
+;; changes will hopefully not be too difficult.
 
-(define-module (guix scripts pull)
+(define-module (guix-stack scripts pull)
   #:use-module ((guix ui) #:hide (display-profile-content))
   #:use-module (guix diagnostics)
   #:use-module (guix colors)
@@ -42,6 +43,7 @@
   #:use-module (guix scripts build)
   #:use-module (guix scripts describe)
   #:autoload   (guix build utils) (which mkdir-p)
+  #:use-module (guix gexp)
   #:use-module (guix git)
   #:use-module (git)
   #:autoload   (gnu packages) (fold-available-packages)
@@ -58,10 +60,10 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 vlist)
   #:use-module (ice-9 format)
+  #:use-module (guix-stack build channel)
   #:re-export (display-profile-content
                channel-commit-hyperlink)
-  #:export (channel-list
-            guix-pull))
+  #:export (stack-pull))
 
 
 ;;;
@@ -91,6 +93,14 @@ Download and deploy the latest version of Guix.\n"))
   (display (G_ "
   -q, --no-channel-files
                          inhibit loading of user and system 'channels.scm'"))
+  ;; XXX: Guix source code addition.
+  (display (G_ "
+  -f, --force
+                         force guix stack pull even when there is nothing to do"))
+  (display (G_ "
+  --from-local-channels=DIR
+                         use precompiled local channels from DIR to pull a Guix profile"))
+  ;; XXX: End of Guix source code addition.
   (display (G_ "
       --url=URL          download \"guix\" channel from the Git repository at URL"))
   (display (G_ "
@@ -143,6 +153,14 @@ Download and deploy the latest version of Guix.\n"))
   (cons* (option '(#\C "channels") #t #f
                  (lambda (opt name arg result)
                    (alist-cons 'channel-file arg result)))
+         ;; XXX: Guix source code addition.
+         (option '(#\f "force") #f #f
+                 (lambda (opt name arg result)
+                   (alist-cons 'force? #t result)))
+         (option '("from-local-channels") #t #f
+                 (lambda (opt name arg result)
+                   (alist-cons 'local-channels-dir #t result)))
+         ;; XXX: End of Guix source code addition.
          (option '(#\q "no-channel-files") #f #f
                  (lambda (opt name arg result)
                    (alist-cons 'ignore-channel-files? #t result)))
@@ -173,16 +191,7 @@ Download and deploy the latest version of Guix.\n"))
                  (lambda (opt name arg result)
                    (cons '(query display-news)
                          (alist-delete 'query result))))
-         (option '("url") #t #f
-                 (lambda (opt name arg result)
-                   (alist-cons 'repository-url arg
-                               (alist-delete 'repository-url result))))
-         (option '("commit") #t #f
-                 (lambda (opt name arg result)
-                   (alist-cons 'ref `(tag-or-commit . ,arg) result)))
-         (option '("branch") #t #f
-                 (lambda (opt name arg result)
-                   (alist-cons 'ref `(branch . ,arg) result)))
+         ;; XXX: Guix source code removal.
          (option '("allow-downgrades") #f #f
                  (lambda (opt name arg result)
                    (alist-cons 'validate-pull warn-about-backward-updates
@@ -219,6 +228,16 @@ Download and deploy the latest version of Guix.\n"))
 
          (append %standard-build-options
                  %standard-native-build-options)))
+
+;; XXX: Guix source code addition.
+(define channel-or-instance-name
+  (match-lambda
+    ((? channel? this-channel)
+     (channel-name this-channel))
+    ((? channel-instance? this-instance)
+     (channel-name
+      (channel-instance-channel this-instance)))))
+;; XXX: End of Guix source code addition.
 
 (define (warn-about-backward-updates channel start commit relation)
   "Warn about non-forward updates of CHANNEL from START to COMMIT, without
@@ -452,7 +471,10 @@ news for earlier generations."))))
       (leave (G_ "profile ~a does not have a previous generation~%")
              profile)))
 
-(define* (build-and-install instances profile)
+;; XXX: Guix source code change.
+(define* (build-and-install instances profile
+                            #:key (local-directory #f))
+;; XXX: End of Guix source code change.
   "Build the tool from SOURCE, and install it in PROFILE.  When DRY-RUN? is
 true, display what would be built without actually building it."
   (define update-profile
@@ -462,7 +484,13 @@ true, display what would be built without actually building it."
     ;; The 'guix' command before we've built the new profile.
     (which "guix"))
 
-  (mlet %store-monad ((manifest (channel-instances->manifest instances)))
+  ;; XXX: Guix source code change.
+  (mlet %store-monad ((manifest (if local-directory
+                                    (local-channels->manifest
+                                     instances
+                                     #:target-directory local-directory)
+                                    (channel-instances->manifest instances))))
+    ;; XXX: End of Guix source code change.
     (mbegin %store-monad
       (update-profile profile manifest
                       ;; Create a version 3 profile so that it is readable by
@@ -760,23 +788,30 @@ transformations specified in OPTS (resulting from '--url', '--commit', or
   (define global-file
     (string-append %sysconfdir "/guix/channels.scm"))
 
-  (define (load-channels file)
+  ;; XXX: Guix source code change.
+  (define (load-channels-and-instances file)
+    (define (channel-or-instance? cand)
+      (or (channel? cand) (channel-instance? cand)))
+
     (let ((result (load* file (make-user-module '((guix channels))))))
-      (if (and (list? result) (every channel? result))
+      (if (and (list? result) (every channel-or-instance? result))
           result
-          (leave (G_ "'~a' did not return a list of channels~%") file))))
+          (leave
+           (G_ "'~a' did not return a list of channels or instances~%")
+           file))))
 
   (define channels
     (cond (file
-           (load-channels file))
+           (load-channels-and-instances file))
           ((and (not ignore-channel-files?)
                 (file-exists? default-file))
-           (load-channels default-file))
+           (load-channels-and-instances default-file))
           ((and (not ignore-channel-files?)
                 (file-exists? global-file))
-           (load-channels global-file))
+           (load-channels-and-instances global-file))
           (else
            %default-channels)))
+  ;; XXX: End of Guix source code change.
 
   (define (environment-variable)
     (match (getenv "GUIX_PULL_URL")
@@ -809,6 +844,44 @@ Use '~/.config/guix/channels.scm' instead."))
              channels)
         channels)))
 
+;; XXX: Guix source code addition.
+(define (are-channels-up-to-date? current-channels futures)
+  "Check if CURRENT-CHANNELS need to be updated.
+
+FUTURES is a list of channel or channel-instance."
+  (and
+   (null? (lset-xor eq?
+                    (map channel-name current-channels)
+                    (map channel-or-instance-name futures)))
+   (every
+    (lambda (current)
+      (match (find
+              (lambda (ch)
+                (eq? (channel-name current) (channel-or-instance-name ch)))
+              futures)
+        ((? channel? next)
+         (string= (channel-commit current)
+                  (or (channel-commit next)
+                      (and=> (repository-open (channel-url next))
+                             (lambda (url)
+                               (oid->string
+                                (object-id
+                                 (revparse-single
+                                  url (channel-branch next))))))
+                      (make-string 40 #\0))))
+        ((? channel-instance? next)
+         (eq? (channel-url current)
+              (with-store store
+                (run-with-store store
+                  (mlet* %store-monad
+                      ((source (lower-object
+                                (channel-instance-checkout next)))
+                       (_ (built-derivations (list source))))
+                    (return (derivation->output-path source)))))))
+        (_ #f)))
+    current-channels)))
+;; XXX: End of Guix source code addition.
+
 (define (validate-cache-directory-ownership)
   "Bail out if the cache directory is not owned by the current user."
   (let ((stats dir
@@ -839,18 +912,41 @@ Use '~/.config/guix/channels.scm' instead."))
                        dir:user our:user)))))))))))
 
 
-(define-command (guix-pull . args)
-  (synopsis "pull the latest revision of Guix")
+;; XXX: Guix source code change.
+(define* (stack-pull args)
+  "Call `stack-force-pull' if there are new commits in source directories."
 
   (define (no-arguments arg _)
     (leave (G_ "~A: extraneous argument~%") arg))
 
   (with-error-handling
     (with-git-error-handling
-     (let* ((opts         (parse-command-line args %options
-                                              (list %default-options)
-                                              #:argument-handler no-arguments))
-            (substitutes? (assoc-ref opts 'substitutes?))
+     (let* ((opts (parse-command-line args))
+            (profile (or (assq-ref opts 'profile) %current-profile))
+            (current-channels (profile-channels profile))
+            (read-channels-and-instances (channel-list opts)))
+       (if (and
+            (not (assq-ref opts 'force?))
+            (are-channels-up-to-date? current-channels
+                                      read-channels-and-instances))
+        (display "Pull: Nothing to be done.\n")
+        (let ((channels instances
+                        (partition channel? read-channels-and-instances)))
+          (stack-force-pull ; Add preloaded options to avoid loading them twice.
+           #:channels channels
+           #:instances instances
+           #:opts opts)))))))
+
+(define* (stack-force-pull #:key
+                           (channels '())
+                           (instances '())
+                           (opts '()))
+  "Lightly modified version of `guix pull'."
+
+  (with-error-handling
+    (with-git-error-handling
+     (let* ((substitutes? (assoc-ref opts 'substitutes?))
+;; XXX: End of Guix source code change.
             (dry-run?     (assoc-ref opts 'dry-run?))
             (profile      (or (assoc-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
@@ -880,17 +976,20 @@ Use '~/.config/guix/channels.scm' instead."))
                  (ensure-default-profile)
                  (honor-x509-certificates store)
 
-                 (let* ((channels (channel-list opts))
-                        (instances
-                         (latest-channel-instances store channels
-                                                   #:current-channels
-                                                   current-channels
-                                                   #:validate-pull
-                                                   validate-pull
-                                                   #:authenticate?
-                                                   authenticate?
-                                                   #:verify-certificate?
-                                                   verify-certificate?)))
+                 ;; XXX: Guix source code change.
+                 (let* ((instances
+                         (append
+                          (latest-channel-instances store channels
+                                                    #:current-channels
+                                                    current-channels
+                                                    #:validate-pull
+                                                    validate-pull
+                                                    #:authenticate?
+                                                    authenticate?
+                                                    #:verify-certificate?
+                                                    verify-certificate?)
+                          instances)))
+                   ;; XXX: End of Guix source code change.
                    (format (current-error-port)
                            (N_ "Building from this channel:~%"
                                "Building from these channels:~%"
@@ -914,6 +1013,11 @@ Use '~/.config/guix/channels.scm' instead."))
                                         (default-guile)))))
                      (with-profile-lock profile
                        (run-with-store store
-                         (build-and-install instances profile)))))))))))))))
+                         ;; XXX: Guix source code change.
+                         (build-and-install
+                          instances profile
+                          #:local-directory  ; defaults to #f
+                          (assoc-ref opts 'local-channels-dir))))))))))))))))
+;; XXX: End of Guix source code change.
 
 ;;; pull.scm ends here
