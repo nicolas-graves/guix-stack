@@ -1,5 +1,5 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
-;;; Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
+;;; Copyright © 2024, 2025 Nicolas Graves <ngraves@ngraves.fr>
 
 (define-module (guix-stack scripts pull)
   #:use-module (guix channels)
@@ -16,6 +16,7 @@
   #:use-module (guix status)
   #:use-module (guix store)
   #:use-module ((guix ui) #:select (with-error-handling))
+  #:use-module (guix-stack build channel)
   #:use-module (git)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
@@ -45,9 +46,10 @@
                         (option '(#\f "force") #f #f
                                 (lambda (opt name arg result)
                                   (alist-cons 'force? #t result)))
+                        (option '("from-local-channels") #t #f
+                                (lambda (opt name arg result)
+                                  (alist-cons 'local-channels-dir #t result)))
                         %options))
-             (%default-options (cons* (cons 'force? #f)
-                                      %default-options))
              (opts (parse-command-line ',args %options
                                        (list %default-options)
                                        #:argument-handler no-arguments))
@@ -138,6 +140,54 @@ FUTURES is a list of channel or channel-instance."
         (_ #f)))
     current-channels)))
 
+(define* (local-build-and-install instances profile
+                                  #:key (target-directory getcwd))
+  "Build the tool from SOURCE, and install it in PROFILE.  When DRY-RUN? is
+true, display what would be built without actually building it."
+  (eval
+   `(begin
+      (reload-module (current-module))
+
+      (define update-profile
+        (store-lift build-and-use-profile))
+
+      (define guix-command
+        ;; The 'guix' command before we've built the new profile.
+        (which "guix"))
+
+      ;; XXX: Beginning of Guix source code change.
+      (mlet %store-monad ((manifest (local-channels->manifest
+                                     instances
+                                     #:target-directory target-directory)))
+        ;; XXX: End of Guix source code change.
+        (mbegin %store-monad
+          (update-profile profile manifest
+                          ;; Create a version 3 profile so that it is readable by
+                          ;; old instances of Guix.
+                          #:format-version 3
+                          #:hooks %channel-profile-hooks)
+
+          (return
+           (let ((more? (display-channel-news-headlines profile)))
+             (newline)
+             (when more?
+               (display-hint
+                (G_ "Run @command{guix pull --news} to read all the news.")))))
+          (if guix-command
+              (let ((new (map (cut string-append <> "/bin/guix")
+                              (list (user-friendly-profile profile)
+                                    profile))))
+                ;; Is the 'guix' command previously in $PATH the same as the new
+                ;; one?  If the answer is "no", then suggest 'hash guix'.
+                (unless (member guix-command new)
+                  (display-hint (G_ "After setting @code{PATH}, run
+@command{hash guix} to make sure your shell refers to @file{~a}.")
+                                (first new)))
+                (return #f))
+              (return #f))))
+
+      (resolve-module '(guix scripts pull) #:ensure #f))))
+
 (define* (stack-pull args)
   "Call `stack-force-pull' if there are new commits in source directories."
 
@@ -207,7 +257,9 @@ FUTURES is a list of channel or channel-instance."
                                          #:current-channels current-channels
                                          #:validate-pull validate-pull
                                          #:authenticate? authenticate?)
-                                        ',instances)))
+                                        ',instances))
+                            (local-channels-dir
+                             (assoc-ref opts 'local-channels-dir)))
                        ;; XXX: End of Guix source code change.
                        (format (current-error-port)
                                (N_ "Building from this channel:~%"
@@ -226,5 +278,12 @@ FUTURES is a list of channel or channel-instance."
                                  instances)
                        (with-profile-lock profile
                          (run-with-store store
-                           (build-and-install instances profile))))))))))))))
+                           ;; XXX: Beginning of Guix source code change.
+                           (if local-channels-dir
+                               (local-build-and-install instances profile
+                                                        #:target-directory
+                                                        local-channels-dir)
+                               (build-and-install instances profile))
+                           ;; XXX: End of Guix source code change.
+                           )))))))))))))
    (resolve-module '(guix scripts pull) #:ensure #f)))
