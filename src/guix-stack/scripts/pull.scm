@@ -114,7 +114,8 @@ FUTURES is a list of channel or channel-instance."
    (every
     (lambda (current)
       (match (find
-              (cut eq? (channel-name current) (channel-or-instance-name <>))
+              (lambda (ch)
+                (eq? (channel-name current) (channel-or-instance-name ch)))
               futures)
         ((? channel? next)
          (string= (channel-commit current)
