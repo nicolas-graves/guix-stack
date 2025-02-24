@@ -73,7 +73,8 @@
            (profile (derivation->output-path prof-drv)))
       (catch #t
         (lambda ()
-          ((store-lower launch-environment/container)
+          ((store-lower
+            (@@ (guix scripts environment) launch-environment/container))
            store
            #:command (cons* (derivation-builder drv)
                             (derivation-builder-arguments drv))
