@@ -25,6 +25,14 @@
 
 ;; TODO: Would be good to avoid those awful reload-module invocations.
 
+(define channel-or-instance-name
+  (match-lambda
+    ((? channel? this-channel)
+     (channel-name this-channel))
+    ((? channel-instance? this-instance)
+     (channel-name
+      (channel-instance-channel this-instance)))))
+
 (define (stack-parse-command-line args)
   (eval
    `(begin
@@ -131,13 +139,6 @@ FUTURES is a list of channel or channel-instance."
 
 (define* (stack-pull args)
   "Call `stack-force-pull' if there are new commits in source directories."
-  (define channel-or-instance-name
-    (match-lambda
-      ((? channel? this-channel)
-       (channel-name this-channel))
-      ((? channel-instance? this-instance)
-       (channel-name
-        (channel-instance-channel this-instance)))))
 
   (with-error-handling
     (with-git-error-handling
