@@ -141,54 +141,6 @@ FUTURES is a list of channel or channel-instance."
         (_ #f)))
     current-channels)))
 
-(define* (local-build-and-install instances profile
-                                  #:key (target-directory getcwd))
-  "Build the tool from SOURCE, and install it in PROFILE.  When DRY-RUN? is
-true, display what would be built without actually building it."
-  (eval
-   `(begin
-      (reload-module (current-module))
-
-      (define update-profile
-        (store-lift build-and-use-profile))
-
-      (define guix-command
-        ;; The 'guix' command before we've built the new profile.
-        (which "guix"))
-
-      ;; XXX: Beginning of Guix source code change.
-      (mlet %store-monad ((manifest (local-channels->manifest
-                                     instances
-                                     #:target-directory target-directory)))
-        ;; XXX: End of Guix source code change.
-        (mbegin %store-monad
-          (update-profile profile manifest
-                          ;; Create a version 3 profile so that it is readable by
-                          ;; old instances of Guix.
-                          #:format-version 3
-                          #:hooks %channel-profile-hooks)
-
-          (return
-           (let ((more? (display-channel-news-headlines profile)))
-             (newline)
-             (when more?
-               (display-hint
-                (G_ "Run @command{guix pull --news} to read all the news.")))))
-          (if guix-command
-              (let ((new (map (cut string-append <> "/bin/guix")
-                              (list (user-friendly-profile profile)
-                                    profile))))
-                ;; Is the 'guix' command previously in $PATH the same as the new
-                ;; one?  If the answer is "no", then suggest 'hash guix'.
-                (unless (member guix-command new)
-                  (display-hint (G_ "After setting @code{PATH}, run
-@command{hash guix} to make sure your shell refers to @file{~a}.")
-                                (first new)))
-                (return #f))
-              (return #f)))))
-
-   (resolve-module '(guix scripts pull) #:ensure #f)))
-
 (define* (stack-pull args)
   "Call `stack-force-pull' if there are new commits in source directories."
 
@@ -219,6 +171,51 @@ true, display what would be built without actually building it."
   (eval
    `(begin
       (reload-module (current-module))
+
+      (define* (local-build-and-install instances profile
+                                        #:key (target-directory getcwd))
+        "Build the tool from SOURCE, and install it in PROFILE.  When DRY-RUN? is
+true, display what would be built without actually building it."
+
+
+        (define update-profile
+          (store-lift build-and-use-profile))
+
+        (define guix-command
+          ;; The 'guix' command before we've built the new profile.
+          (which "guix"))
+
+        ;; XXX: Beginning of Guix source code change.
+        (mlet %store-monad ((manifest (local-channels->manifest
+                                       instances
+                                       #:target-directory target-directory)))
+          ;; XXX: End of Guix source code change.
+          (mbegin %store-monad
+            (update-profile profile manifest
+                            ;; Create a version 3 profile so that it is readable by
+                            ;; old instances of Guix.
+                            #:format-version 3
+                            #:hooks %channel-profile-hooks)
+
+            (return
+             (let ((more? (display-channel-news-headlines profile)))
+               (newline)
+               (when more?
+                 (display-hint
+                  (G_ "Run @command{guix pull --news} to read all the news.")))))
+            (if guix-command
+                (let ((new (map (cut string-append <> "/bin/guix")
+                                (list (user-friendly-profile profile)
+                                      profile))))
+                  ;; Is the 'guix' command previously in $PATH the same as the new
+                  ;; one?  If the answer is "no", then suggest 'hash guix'.
+                  (unless (member guix-command new)
+                    (display-hint (G_ "After setting @code{PATH}, run
+@command{hash guix} to make sure your shell refers to @file{~a}.")
+                                  (first new)))
+                  (return #f))
+                (return #f)))))
+
       (with-error-handling
         (with-git-error-handling
          (let* ((opts ',opts)
