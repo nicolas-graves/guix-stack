@@ -123,10 +123,11 @@ FUTURES is a list of channel or channel-instance."
          (string= (channel-commit current)
                   (or (channel-commit next)
                       (and=> (repository-open (channel-url next))
-                             (cut
-                              oid->string
-                              (object-id
-                               (revparse-single <> (channel-branch next)))))
+                             (lambda (url)
+                               (oid->string
+                                (object-id
+                                 (revparse-single
+                                  url (channel-branch next))))))
                       (make-string 40 #\0))))
         ((? channel-instance? next)
          (eq? (channel-url current)
