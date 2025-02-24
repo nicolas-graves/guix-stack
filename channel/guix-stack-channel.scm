@@ -36,8 +36,8 @@
            (sha256 (base32 "1nxy7wp6882x6cdcqywvy90q37dnlblibh62g584pycyvwx88hlp")))))))))
 
 (define-public guix-stack
-  (let ((commit "1e2d349ac0cb83e7e4af5afd86a377667a041995")
-        (revision "17"))
+  (let ((commit "aec44ed")
+        (revision "20"))
     (package
       (name "guix-stack")
       (version (git-version "0.0.0" revision commit))
