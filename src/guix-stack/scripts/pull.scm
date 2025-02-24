@@ -184,9 +184,9 @@ true, display what would be built without actually building it."
 @command{hash guix} to make sure your shell refers to @file{~a}.")
                                 (first new)))
                 (return #f))
-              (return #f))))
+              (return #f)))))
 
-      (resolve-module '(guix scripts pull) #:ensure #f))))
+   (resolve-module '(guix scripts pull) #:ensure #f)))
 
 (define* (stack-pull args)
   "Call `stack-force-pull' if there are new commits in source directories."
