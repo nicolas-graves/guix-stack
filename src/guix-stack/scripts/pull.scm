@@ -487,7 +487,10 @@ true, display what would be built without actually building it."
   ;; XXX: Guix source code change.
   (mlet %store-monad ((manifest (if local-directory
                                     (local-channels->manifest
-                                     instances
+                                     (map (compose symbol->string
+                                                   channel-name
+                                                   channel-instance-channel)
+                                          instances)
                                      #:target-directory local-directory)
                                     (channel-instances->manifest instances))))
     ;; XXX: End of Guix source code change.
