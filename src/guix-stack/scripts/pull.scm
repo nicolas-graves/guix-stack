@@ -16,6 +16,7 @@
   #:use-module (guix status)
   #:use-module (guix store)
   #:use-module ((guix ui) #:select (with-error-handling))
+  #:use-module (guix-stack build channel)
   #:use-module (git)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
@@ -32,6 +33,31 @@
     ((? channel-instance? this-instance)
      (channel-name
       (channel-instance-channel this-instance)))))
+
+(define (stack-parse-command-line args)
+  (eval
+   `(begin
+      (reload-module (current-module))
+
+      (define (no-arguments arg _)
+        (leave (G_ "~A: extraneous argument~%") arg))
+
+      (let* ((%options (cons*
+                        (option '(#\f "force") #f #f
+                                (lambda (opt name arg result)
+                                  (alist-cons 'force? #t result)))
+                        (option '("from-local-channels") #t #f
+                                (lambda (opt name arg result)
+                                  (alist-cons 'local-channels-dir #t result)))
+                        %options))
+             (opts (parse-command-line ',args %options
+                                       (list %default-options)
+                                       #:argument-handler no-arguments))
+             (unsupported '(ref repository-url)))
+        (remove (lambda (item)
+                  (member (car item) unsupported))
+                opts)))
+   (resolve-module '(guix scripts pull) #:ensure #f)))
 
 (define (channel-or-instance-list opts)
   "Return the list of channel-instances to use.  If OPTS specify a
@@ -145,32 +171,12 @@ FUTURES is a list of channel or channel-instance."
   (eval
    `(begin
       (reload-module (current-module))
-      (use-modules (guix-stack build channel))
-
-      (define (stack-parse-command-line args)
-        (define (no-arguments arg _)
-          (leave (G_ "~A: extraneous argument~%") arg))
-
-        (let* ((%options (cons*
-                          (option '(#\f "force") #f #f
-                                  (lambda (opt name arg result)
-                                    (alist-cons 'force? #t result)))
-                          (option '("from-local-channels") #t #f
-                                  (lambda (opt name arg result)
-                                    (alist-cons 'local-channels-dir #t result)))
-                          %options))
-               (opts (parse-command-line ',args %options
-                                         (list %default-options)
-                                         #:argument-handler no-arguments))
-               (unsupported '(ref repository-url)))
-          (remove (lambda (item)
-                    (member (car item) unsupported))
-                  opts)))
 
       (define* (local-build-and-install instances profile
                                         #:key (target-directory getcwd))
         "Build the tool from SOURCE, and install it in PROFILE.  When DRY-RUN? is
 true, display what would be built without actually building it."
+
 
         (define update-profile
           (store-lift build-and-use-profile))
