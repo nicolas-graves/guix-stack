@@ -81,7 +81,7 @@
                     (substitute* "src/guix-stack/scripts/hook.scm"
                       (("@GIT_SENDEMAIL_VALIDATE_HOOK@")
                        (string-append hookdir "/sendemail-validate.awk")))
-                    (install-file "git/hooks/sendemail-validate" hookdir))))
+                    (install-file "git/hooks/sendemail-validate.awk" hookdir))))
               (add-before 'build 'install-guix-extension
                 (lambda _
                   (install-file
