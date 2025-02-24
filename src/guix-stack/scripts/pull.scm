@@ -145,7 +145,7 @@ FUTURES is a list of channel or channel-instance."
             (profile (or (assq-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
             (read-channels-and-instances (channel-or-instance-list opts)))
-       (if (or
+       (if (and
             (not (assq-ref opts 'force?))
             (are-channels-up-to-date? current-channels
                                       read-channels-and-instances))
