@@ -1,21 +1,20 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;; Copyright © 2025 Nicolas Graves <ngraves@ngraves.fr>
 
-(define-module (guix-stack-channel))
-
-(use-modules (ice-9 match)
-             (srfi srfi-1)
-             (guix packages)
-             (guix gexp)
-             (guix git)
-             (guix download)
-             (guix git-download)
-             (guix build-system guile)
-             ((guix licenses) #:prefix license:)
-             (guix utils)
-             (gnu packages gawk)
-             (gnu packages guile)
-             (gnu packages package-management))
+(define-module (guix-stack-channel)
+  #:use-module (ice-9 match)
+  #:use-module (srfi srfi-1)
+  #:use-module (guix packages)
+  #:use-module (guix gexp)
+  #:use-module (guix git)
+  #:use-module (guix download)
+  #:use-module (guix git-download)
+  #:use-module (guix build-system guile)
+  #:use-module ((guix licenses) #:prefix license:)
+  #:use-module (guix utils)
+  #:use-module (gnu packages gawk)
+  #:use-module (gnu packages guile)
+  #:use-module (gnu packages package-management))
 
 (define-public guile-git-with-revwalker
   (let ((commit "03b709e5ee66a22b54d5774ea226a31df7e4bcf4")
@@ -95,3 +94,5 @@
       (description "This package provides a guix extension to with
 helpful tools for local development.")
       (license license:gpl3+))))
+
+guix-stack
