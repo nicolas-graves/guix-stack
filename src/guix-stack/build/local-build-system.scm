@@ -56,37 +56,36 @@
 
 (define* (build-in-local-container store package)
   "Build local PACKAGE in a container locally."
-  (with-store store
-    ;; We can't use package->derivation directly because we want the
-    ;; user rather than the daemon to build the derivation.
-    ;; This allows us to have access to the pre-built files without
-    ;; having to mess with hashes or timestamps.
-    (let* ((manifest (package->development-manifest package))
-           (bag (package->bag package))
-           ;; See (@@ (guix scripts environment) manifest->derivation).
-           (prof-drv ((store-lower profile-derivation)
-                      store manifest #:allow-collisions? #t))
-           (drv ((@@ (guix packages) bag->derivation*) store bag package))
-           (_ (build-derivations store
-                                 (cons* prof-drv (derivation-inputs drv))))
-           (profile (derivation->output-path prof-drv)))
-      (catch #t
-        (lambda ()
-          ((store-lower
-            (@@ (guix scripts environment) launch-environment/container))
-           store
-           #:command (cons* (derivation-builder drv)
-                            (derivation-builder-arguments drv))
-           #:bash (string-append profile "/bin/bash")
-           #:map-cwd? #t
-           #:user-mappings
-           (list (specification->file-system-mapping "/gnu/store" #f))
-           #:profile profile
-           #:manifest manifest))
-        (lambda args
-          (match args
-            (('quit 0) #t)
-            (_ (begin (error args) #f))))))))
+  ;; We can't use package->derivation directly because we want the
+  ;; user rather than the daemon to build the derivation.
+  ;; This allows us to have access to the compiled files without
+  ;; having to mess with hashes or timestamps.
+  (let* ((manifest (package->development-manifest package))
+         (bag (package->bag package))
+         ;; See (@@ (guix scripts environment) manifest->derivation).
+         (prof-drv ((store-lower profile-derivation)
+                    store manifest #:allow-collisions? #t))
+         (drv ((@@ (guix packages) bag->derivation*) store bag package))
+         (_ (build-derivations store
+                               (cons* prof-drv (derivation-inputs drv))))
+         (profile (derivation->output-path prof-drv)))
+    (catch #t
+      (lambda ()
+        ((store-lower
+          (@@ (guix scripts environment) launch-environment/container))
+         store
+         #:command (cons* (derivation-builder drv)
+                          (derivation-builder-arguments drv))
+         #:bash (string-append profile "/bin/bash")
+         #:map-cwd? #t
+         #:user-mappings
+         (list (specification->file-system-mapping "/gnu/store" #f))
+         #:profile profile
+         #:manifest manifest))
+      (lambda args
+        (match args
+          (('quit 0) #t)
+          (_ (begin (error args) #f)))))))
 
 (define (local-phases phases to-ignore path)
   "Modify phases to incorporate configured phases caching logic."
