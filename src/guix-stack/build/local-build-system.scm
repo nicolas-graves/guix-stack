@@ -66,10 +66,16 @@
          ;; See (@@ (guix scripts environment) manifest->derivation).
          (prof-drv ((store-lower profile-derivation)
                     store manifest #:allow-collisions? #t))
-         (drv ((@@ (guix packages) bag->derivation*) store bag package))
-         (_ (build-derivations store
-                               (cons* prof-drv (derivation-inputs drv))))
+         ;; I don't understand how we can have gexps
+         ;; here though but it's necessary to work.
+         (drv (run-with-store store
+                (bag->derivation bag package)))
+         (_ (build-derivations
+             store (cons* prof-drv (if (derivation? drv)
+                                       (derivation-inputs drv)
+                                       '()))))
          (profile (derivation->output-path prof-drv)))
+
     (catch #t
       (lambda ()
         ((store-lower

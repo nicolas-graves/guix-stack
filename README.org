@@ -1,0 +1,35 @@
+#+TITLE: Guix Stack
+
+* Guix Stack
+
+This repository is home of the =guix-stack= channel and extension.
+
+The goal is to provide tools to help for local guix development.
+It's still mostly undocumented.
+
+The channel provides an extension of =guix pull=.
+
+Current available commands are :
+- =guix stack pull= to pull from a channel patched with a list of
+  deterministic file-likes.
+  This has a bug currently.
+
+  This channel won't work on upstream guix.  It currently requires patchset 68315 to work properly.
+
+** Implementation notes
+
+In the development phase, this repository had a =guix stack
+install-hook= command, that installed a git hook that recorded metadata
+when emails are sent with =git send-email=.  It was discontinued because
+configuration-wise, it started to get tricky:
+- =sendemail-validate= was not precise enough (patches actually sent after validation had a different/later message-ID)
+- so the only option was to patch =sendemail=
+  - but that makes configuration tricky: reading =sendemail.sendemail=, replacing it but making a proper backup...
+  - I could've used the yoctocell's =direnv= trick, but that introduces a new dependency...
+
+All in all, it s sounded much more adapted to an Emacs workflow (more flexible hooks, callbacks...) than a pure git one.
+The part implementing those ideas has been moved to the =git-email= package.
+
+** Documentation for Guix Extensions
+
+- guix extensions are now supported within channels since 74633
