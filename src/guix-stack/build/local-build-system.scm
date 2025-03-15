@@ -96,30 +96,35 @@
 
 (define (local-phases phases to-ignore path)
   "Modify phases to incorporate configured phases caching logic."
-  (let ((filtered-phases
-         (if (file-exists? (string-append path "/guix-configured.stamp"))
-             ;; This fold is a simple opposite filter-alist based on key.
-             #~(begin
-                 (use-modules (srfi srfi-1))
-                 (fold
-                  (lambda (key result)
-                    (if (member (car key) '#$to-ignore)
-                        result
-                        (cons key result)))
-                  '()
-                  (reverse #$phases)))
-             phases)))
+  (let* ((wrapped-phases
+          #~(modify-phases #$phases
+              (add-after 'unpack 'setup-gitignore
+                (lambda _
+                  (let ((gitignore (open-file ".gitignore" "a")))
+                    (display "out\nguix-configured.stamp" gitignore)
+                    (close-port gitignore))))))
+         (ignore-phases (cons* 'setup-gitignore to-ignore))
+         (filtered-phases
+          (if (file-exists? (string-append path "/guix-configured.stamp"))
+              ;; This fold is a simple opposite filter-alist based on key.
+              #~(begin
+                  (use-modules (srfi srfi-1))
+                  (fold
+                   (lambda (key result)
+                     (if (member (car key) '#$ignore-phases)
+                         result
+                         (cons key result)))
+                   '()
+                   (reverse #$wrapped-phases)))
+              phases)))
     #~(modify-phases #$filtered-phases
         (add-before 'unpack 'delete-former-output
           (lambda _
             (when (file-exists? "out")
-              (delete-file-recursively "out"))
-            (let ((gitignore (open-file ".gitignore" "a")))
-              (display "out\nguix-configured.stamp" gitignore)
-              (close-port gitignore))))
+              (delete-file-recursively "out"))))
         ;; The source is the current working directory.
         (delete 'unpack)
-        (add-before 'build 'flag-as-cached
+        (add-before 'build 'flag-as-configured
           (lambda _
             (call-with-output-file "guix-configured.stamp"
               (const #t)))))))
