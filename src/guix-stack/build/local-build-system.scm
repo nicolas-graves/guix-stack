@@ -18,6 +18,7 @@
   #:use-module (guix build-system)
   #:export (make-local-build-system
             build-in-local-container
+            local-tarball
             patch-source-phase
             local-phases))
 
@@ -94,6 +95,30 @@
         (match args
           (('quit 0) #t)
           (_ (begin (error args) #f)))))))
+
+(define* (local-tarball path #:optional name
+                        #:key (exclude-vcs? #t))
+  "Like recursive local-file, but keep mtimes using a tarball."
+  ;; Intended to be used as an arei buffer.
+  ;; We can't intern and keep mtimes with local-file, so
+  ;; use this hack to use a wrapper tarball which keeps mtimes.
+  (let* ((stripped-path (pk '1 (string-drop-right (basename path) 1)))
+         (pfx (pk '2 (mkdtemp (format #f "/tmp/local-~aXXXXXX" stripped-path))))
+         (tarball (pk 't (string-append pfx "/" stripped-path ".tar"))))
+    (and
+     (apply invoke
+            (append
+             (list "tar")
+             (if exclude-vcs?
+                 '("--exclude-vcs")
+                 '())
+             (list "-cf" (pk 't tarball)
+                   "--format=gnu"
+                   ;; "--owner=root:0"
+                   ;; "--group=root:0"
+                   ;; "--hard-dereference"
+                   "-C" path ".")))
+     (local-file tarball (string-append "local-" stripped-path ".tar")))))
 
 (define* (patch-source-phase origin-source patches
                              #:key
