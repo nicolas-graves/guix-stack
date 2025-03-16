@@ -9,6 +9,7 @@
   #:use-module (guix profiles)
   #:use-module (guix store)
   #:use-module (guix monads)
+  #:use-module ((guix utils) #:select (substitute-keyword-arguments))
   #:use-module (guix scripts environment)
   #:use-module (gnu system file-systems)
   #:use-module (srfi srfi-1)
@@ -19,8 +20,7 @@
   #:export (make-local-build-system
             build-in-local-container
             local-tarball
-            patch-source-phase
-            local-phases))
+            local-arguments))
 
 (define (make-local-lower old-lower target-directory modules)
   (lambda* args
@@ -70,8 +70,7 @@
                     store manifest #:allow-collisions? #t))
          ;; I don't understand how we can have gexps
          ;; here though but it's necessary to work.
-         (drv (run-with-store store
-                (bag->derivation bag package)))
+         (drv (run-with-store store (bag->derivation bag package)))
          (_ (build-derivations
              store (cons* prof-drv (if (derivation? drv)
                                        (derivation-inputs drv)
@@ -120,72 +119,51 @@
                    "-C" path ".")))
      (local-file tarball (string-append "local-" stripped-path ".tar")))))
 
-(define* (patch-source-phase source
-                             #:key
-                             (flags #~("-p1"))
-                             (patch (@ (gnu packages base) patch)))
-  ;; XXX: copied from guix/packages.scm
-  (define (apply-patch patch)
-    (format (current-error-port) "applying '~a'...~%" patch)
-
-    ;; Use '--force' so that patches that do not apply perfectly are
-    ;; rejected.  Use '--no-backup-if-mismatch' to prevent making
-    ;; "*.orig" file if a patch is applied with offset.
-    (invoke (string-append patch "/bin/patch")
-            "--force" "--no-backup-if-mismatch"
-            flags "--input" patch))
-
-  (when (not (file-exists? "guix-configured.stamp"))
-    (for-each apply-patch (origin-patches source))
-
-    ;; XXX: copied from guix/packages.scm
-    ;; Works but there's no log yet.
-    (let ((snippet (origin-snippet source)))
-      (if snippet
-          #~(let ((module (make-fresh-user-module)))
-              (module-use-interfaces!
-               module
-               (map resolve-interface '#+(origin-modules source)))
-              ((@ (system base compile) compile)
-               '#+(if (pair? snippet)
-                      (sexp->gexp snippet)
-                      snippet)
-               #:to 'value
-               #:opts %auto-compilation-options
-               #:env module))
-          #~#t))))
-
-(define (local-phases phases to-ignore path)
+(define* (local-arguments arguments to-ignore path #:optional source)
   "Modify phases to incorporate configured phases caching logic."
-  (let* ((wrapped-phases
-          #~(modify-phases #$phases
-              (add-after 'unpack 'setup-gitignore
-                (lambda _
-                  (let ((gitignore (open-file ".gitignore" "a")))
-                    (display "out\nguix-configured.stamp" gitignore)
-                    (close-port gitignore))))))
-         (ignore-phases (cons* 'setup-gitignore to-ignore))
-         (filtered-phases
-          (if (file-exists? (string-append path "/guix-configured.stamp"))
-              ;; This fold is a simple opposite filter-alist based on key.
-              #~(begin
-                  (use-modules (srfi srfi-1))
-                  (fold
-                   (lambda (key result)
-                     (if (member (car key) '#$ignore-phases)
-                         result
-                         (cons key result)))
-                   '()
-                   (reverse #$wrapped-phases)))
-              phases)))
-    #~(modify-phases #$filtered-phases
-        (add-before 'unpack 'delete-former-output
-          (lambda _
-            (when (file-exists? "out")
-              (delete-file-recursively "out"))))
-        ;; The source is the current working directory.
-        (delete 'unpack)
-        (add-before 'build 'flag-as-configured
-          (lambda _
-            (call-with-output-file "guix-configured.stamp"
-              (const #t)))))))
+  (substitute-keyword-arguments arguments
+    ((#:substitutable? _) #f)
+    ((#:modules modules)
+     `((guix-stack build patch)
+       ,@modules))
+    ((#:imported-modules modules)
+     `((guix-stack build patch)
+       ,@modules))
+    ((#:phases phases)
+     (let* ((wrapped-phases
+             #~(modify-phases #$phases
+                 (add-after 'unpack 'setup-gitignore
+                   (lambda _
+                     (let ((gitignore (open-file ".gitignore" "a")))
+                       (display "out\nguix-configured.stamp" gitignore)
+                       (close-port gitignore))))
+                 (add-after 'unpack 'patch-source
+                   (lambda _
+                     (if #$source
+                         (patch-source-phase #$source)
+                         (format #t "No need to patch source.~%"))))))
+            (ignore-phases (cons* 'setup-gitignore to-ignore))
+            (filtered-phases
+             (if (file-exists? (string-append path "/guix-configured.stamp"))
+                 ;; This fold is a simple opposite filter-alist based on key.
+                 #~(begin
+                     (use-modules (srfi srfi-1))
+                     (fold
+                      (lambda (key result)
+                        (if (member (car key) '#$ignore-phases)
+                            result
+                            (cons key result)))
+                      '()
+                      (reverse #$wrapped-phases)))
+                 phases)))
+       #~(modify-phases #$filtered-phases
+           (add-before 'unpack 'delete-former-output
+             (lambda _
+               (when (file-exists? "out")
+                 (delete-file-recursively "out"))))
+           ;; The source is the current working directory.
+           (delete 'unpack)
+           (add-before 'build 'flag-as-configured
+             (lambda _
+               (call-with-output-file "guix-configured.stamp"
+                 (const #t)))))))))
