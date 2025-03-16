@@ -168,7 +168,7 @@
                             (cons key result)))
                       '()
                       (reverse #$wrapped-phases)))
-                 phases)))
+                 wrapped-phases)))
        #~(modify-phases #$filtered-phases
            (add-before 'unpack 'delete-former-output
              (lambda _
