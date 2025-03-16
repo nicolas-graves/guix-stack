@@ -57,13 +57,26 @@
     (lower (make-local-lower (build-system-lower target-build-system)
                              target-directory modules))))
 
+(define (default-guix-stack)
+  "Return the default guix-stack package."
+  ;; Do not use `@' to avoid introducing circular dependencies.
+  (let ((module (resolve-interface '(guix-stack-channel))))
+    (module-ref module 'guix-stack)))
+
 (define* (build-in-local-container store package)
   "Build local PACKAGE in a container locally."
   ;; We can't use package->derivation directly because we want the
   ;; user rather than the daemon to build the derivation.
   ;; This allows us to have access to the compiled files without
   ;; having to mess with hashes or timestamps.
-  (let* ((manifest (package->development-manifest package))
+  (let* ((manifest (package->development-manifest
+                    ;; This is to allow us to have access to
+                    ;; (guix-stack build patch) during the build.
+                    (package/inherit package
+                      (native-inputs
+                       (modify-inputs (package-native-inputs package)
+                         (append (default-guix-stack)
+                                 (@ (gnu packages package-management) guix)))))))
          (bag (package->bag package))
          ;; See (@@ (guix scripts environment) manifest->derivation).
          (prof-drv ((store-lower profile-derivation)
