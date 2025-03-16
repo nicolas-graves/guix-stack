@@ -120,7 +120,7 @@
                    "-C" path ".")))
      (local-file tarball (string-append "local-" stripped-path ".tar")))))
 
-(define* (patch-source-phase origin-source patches
+(define* (patch-source-phase source
                              #:key
                              (flags #~("-p1"))
                              (patch (@ (gnu packages base) patch)))
@@ -133,27 +133,27 @@
     ;; "*.orig" file if a patch is applied with offset.
     (invoke (string-append patch "/bin/patch")
             "--force" "--no-backup-if-mismatch"
-            #+@flags "--input" patch))
+            flags "--input" patch))
 
   (when (not (file-exists? "guix-configured.stamp"))
-    (for-each apply-patch '#$patches)
+    (for-each apply-patch (origin-patches source))
 
     ;; XXX: copied from guix/packages.scm
     ;; Works but there's no log yet.
-    #+(let ((snippet (origin-snippet origin-source)))
-        (if snippet
-            #~(let ((module (make-fresh-user-module)))
-                (module-use-interfaces!
-                 module
-                 (map resolve-interface '#+(origin-modules origin-source)))
-                ((@ (system base compile) compile)
-                 '#+(if (pair? snippet)
-                        (sexp->gexp snippet)
-                        snippet)
-                 #:to 'value
-                 #:opts %auto-compilation-options
-                 #:env module))
-            #~#t))))
+    (let ((snippet (origin-snippet source)))
+      (if snippet
+          #~(let ((module (make-fresh-user-module)))
+              (module-use-interfaces!
+               module
+               (map resolve-interface '#+(origin-modules source)))
+              ((@ (system base compile) compile)
+               '#+(if (pair? snippet)
+                      (sexp->gexp snippet)
+                      snippet)
+               #:to 'value
+               #:opts %auto-compilation-options
+               #:env module))
+          #~#t))))
 
 (define (local-phases phases to-ignore path)
   "Modify phases to incorporate configured phases caching logic."
