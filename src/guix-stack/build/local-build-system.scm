@@ -101,7 +101,7 @@
          #:map-cwd? #t
          #:user-mappings
          (list (specification->file-system-mapping "/gnu/store" #f))
-         #:profile profile
+         #:profile (pk 'profile profile)
          #:manifest manifest))
       (lambda args
         (match args
