@@ -35,8 +35,8 @@
                   "0jnq2snzq0zj2rmbfgzvxnzf4swfkj6air54ipxl6hyaxbli1873")))))))
 
 (define-public guix-stack
-  (let ((commit "8acd7a0")
-        (revision "72"))
+  (let ((commit "1ba957b")
+        (revision "74"))
     (package
       (name "guix-stack")
       (version (git-version "0.0.0" revision commit))
