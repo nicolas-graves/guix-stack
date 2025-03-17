@@ -145,6 +145,10 @@
     ((#:phases phases)
      (let* ((wrapped-phases
              #~(modify-phases #$phases
+                 (add-before 'unpack 'delete-former-output
+                   (lambda _
+                     (when (file-exists? "out")
+                       (delete-file-recursively "out"))))
                  (add-after 'unpack 'setup-gitignore
                    (lambda _
                      (let ((gitignore (open-file ".gitignore" "a")))
@@ -154,29 +158,23 @@
                    (lambda _
                      (if #$source
                          (patch-source-phase #$source)
-                         (format #t "No need to patch source.~%"))))))
-            (ignore-phases (cons* 'setup-gitignore to-ignore))
-            (filtered-phases
-             (if (file-exists? (string-append path "/guix-configured.stamp"))
-                 ;; This fold is a simple opposite filter-alist based on key.
-                 #~(begin
-                     (use-modules (srfi srfi-1))
-                     (fold
-                      (lambda (key result)
-                        (if (member (car key) '#$ignore-phases)
-                            result
-                            (cons key result)))
-                      '()
-                      (reverse #$wrapped-phases)))
-                 wrapped-phases)))
-       #~(modify-phases #$filtered-phases
-           (add-before 'unpack 'delete-former-output
-             (lambda _
-               (when (file-exists? "out")
-                 (delete-file-recursively "out"))))
-           ;; The source is the current working directory.
-           (delete 'unpack)
-           (add-before 'build 'flag-as-configured
-             (lambda _
-               (call-with-output-file "guix-configured.stamp"
-                 (const #t)))))))))
+                         (format #t "No need to patch source.~%"))))
+                 ;; The source is the current working directory.
+                 (delete 'unpack)
+                 (add-before 'build 'flag-as-configured
+                   (lambda _
+                     (call-with-output-file "guix-configured.stamp"
+                       (const #t))))))
+            (ignore-phases (cons* 'setup-gitignore to-ignore)))
+       (if (file-exists? (string-append path "/guix-configured.stamp"))
+           ;; This fold is a simple opposite filter-alist based on key.
+           #~(begin
+               (use-modules (srfi srfi-1))
+               (fold
+                (lambda (key result)
+                  (if (member (car key) '#$ignore-phases)
+                      result
+                      (cons key result)))
+                '()
+                (reverse #$wrapped-phases)))
+           wrapped-phases)))))
