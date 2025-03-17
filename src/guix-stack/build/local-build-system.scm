@@ -135,14 +135,13 @@
 (define* (local-arguments arguments to-ignore path #:optional source)
   "Modify phases to incorporate configured phases caching logic."
   (substitute-keyword-arguments arguments
-    ((#:substitutable? _) #f)
+    ((#:substitutable? _ #t)
+     #f)
     ((#:modules modules)
-     `((guix-stack build patch)
-       ,@modules))
+     `((guix-stack build patch) ,@modules))
     ((#:imported-modules modules)
-     `((guix-stack build patch)
-       ,@modules))
-    ((#:phases phases)
+     `((guix-stack build patch) ,@modules))
+    ((#:phases phases #~%standard-phases)
      (let* ((wrapped-phases
              #~(modify-phases #$phases
                  (add-before 'unpack 'delete-former-output
