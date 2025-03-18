@@ -15,6 +15,7 @@
   #:use-module (guix scripts environment)
   #:use-module (gnu system file-systems)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-71)
   #:use-module (ice-9 match)
   #:use-module (gnu packages)
   #:use-module (guix build utils)
@@ -22,7 +23,8 @@
   #:export (local-build-system+imported+modules
             build-in-local-container
             local-tarball
-            local-arguments))
+            local-arguments
+            local-package))
 
 (define (make-local-lower old-lower target-directory)
   (lambda* args
@@ -151,6 +153,7 @@
                   (delete '(guix config)
                           (source-module-closure
                            '((guix-stack build patch)
+                             ;; TODO see if it's possible to remove those two
                              (guix gexp)
                              (guix packages)))))))
        `(,@imported-modules ,@modules)))
@@ -192,3 +195,20 @@
                 '()
                 (reverse #$wrapped-phases)))
            wrapped-phases)))))
+
+(define (local-package pkg target-directory
+                       phases-ignored-when-configured)
+  (let ((local-build-system imported-modules modules
+                            (local-build-system+imported+modules
+                             (package-build-system pkg)
+                             #:target-directory target-directory)))
+    (package/inherit pkg
+      (source #f)
+      (build-system local-build-system)
+      (arguments (local-arguments
+                  (package-arguments pkg)
+                  phases-ignored-when-configured
+                  target-directory
+                  (package-source pkg)
+                  #:default-imported-modules imported-modules
+                  #:default-modules modules)))))
