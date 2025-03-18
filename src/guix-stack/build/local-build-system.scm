@@ -36,13 +36,15 @@
                ((builder (apply (bag-build old-bag)
                                 name inputs #:outputs outputs rest)))
              (return
-              #~(with-directory-excursion #$target-directory
-                  (for-each
-                   (lambda (out)
-                     (setenv
-                      out (string-append #$target-directory "/" out)))
-                   '#$outputs)
-                  #$builder)))))))))
+              #~(begin
+                  (use-modules (guix build utils))
+                  (with-directory-excursion #$target-directory
+                    (for-each
+                     (lambda (out)
+                       (setenv
+                        out (string-append #$target-directory "/" out)))
+                     '#$outputs)
+                    #$builder))))))))))
 
 (define* (local-build-system+imported+modules target-build-system
                                               #:key
