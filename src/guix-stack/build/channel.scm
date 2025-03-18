@@ -113,67 +113,60 @@ This enables us not to try and run build steps when not necessary."
     (let* ((repo (repository-open path))
            (commit (oid->string
                     (object-id (revparse-single repo "master"))))
-           (version (git-version "1.4.0" "0" commit)))
+           (version (git-version "1.4.0" "0" commit))
+           (phases-ignored-when-configured
+            '(disable-failing-tests
+              disable-translations
+              bootstrap
+              patch-usr-bin-file
+              patch-source-shebangs
+              configure
+              patch-generated-file-shebangs
+              use-host-compressors))
+           (local-guix (local-package guix
+                                      path
+                                      phases-ignored-when-configured)))
       (and
        (or
         (is-guix-up-to-date? path)
         (build-in-local-container
          store
-         (package/inherit guix
+         (package/inherit local-guix
            (version version)
-           (source #f)
-           (build-system (make-local-build-system
-                          (package-build-system guix)
-                          #:target-directory path
-                          ;; FIXME Unclear why srfi-26 can only be used at top-level.
-                          #:modules '((guix build utils)
-                                      (srfi srfi-1)
-                                      (srfi srfi-26))))
            (arguments
-            (substitute-keyword-arguments (package-arguments guix)
+            (substitute-keyword-arguments (package-arguments local-guix)
               ;; Disable translations for speed.
               ((#:configure-flags flags #~'())
                #~(cons* "--disable-nls" #$flags))
               ((#:phases phases #~%standard-phases)
-               (local-phases
-                #~(modify-phases #$phases
-                    ;; Disable translations for speed.
-                    (add-before 'bootstrap 'disable-translations
-                      (lambda _
-                        (substitute* "bootstrap"
-                          (("for lang in \\$\\{langs\\}")
-                           "for lang in "))
-                        (substitute* "Makefile.am"
-                          (("include po/doc/local\\.mk")
-                           "EXTRA_DIST ="))
-                        (substitute* "doc/local.mk"
-                          (("^(MANUAL|COOKBOOK)_LANGUAGES = .*" all type)
-                           (string-append type "_LANGUAGES =\n"))
-                          ;; This is the rule following info_TEXINFOS.
-                          (("%C%_guix_TEXINFOS =" all)
-                           (string-append
-                            "info_TEXINFOS=%D%/guix.texi %D%/guix-cookbook.texi\n"
-                            all)))))
-                    ;; FIXME arguments substitutions other than phases
-                    ;; don't seem to apply : tests are run despite #:tests? #f
-                    (delete 'copy-bootstrap-guile)
-                    (delete 'set-SHELL)
-                    (delete 'check)
-                    ;; FIXME strip has the same issue
-                    ;; => Run it in copy-build-system for now.
-                    (delete 'strip)
-                    ;; Run it only when we need to debug, saves us a few seconds.
-                    (delete 'validate-runpath))
-                ;; phases-ignored-when-configured
-                '(disable-failing-tests
-                  disable-translations
-                  bootstrap
-                  patch-usr-bin-file
-                  patch-source-shebangs
-                  configure
-                  patch-generated-file-shebangs
-                  use-host-compressors)
-                path)))))))
+               #~(modify-phases #$phases
+                   ;; Disable translations for speed.
+                   (add-before 'bootstrap 'disable-translations
+                     (lambda _
+                       (substitute* "bootstrap"
+                         (("for lang in \\$\\{langs\\}")
+                          "for lang in "))
+                       (substitute* "Makefile.am"
+                         (("include po/doc/local\\.mk")
+                          "EXTRA_DIST ="))
+                       (substitute* "doc/local.mk"
+                         (("^(MANUAL|COOKBOOK)_LANGUAGES = .*" all type)
+                          (string-append type "_LANGUAGES =\n"))
+                         ;; This is the rule following info_TEXINFOS.
+                         (("%C%_guix_TEXINFOS =" all)
+                          (string-append
+                           "info_TEXINFOS=%D%/guix.texi %D%/guix-cookbook.texi\n"
+                           all)))))
+                   ;; FIXME arguments substitutions other than phases
+                   ;; don't seem to apply : tests are run despite #:tests? #f
+                   (delete 'copy-bootstrap-guile)
+                   (delete 'set-SHELL)
+                   (delete 'check)
+                   ;; FIXME strip has the same issue
+                   ;; => Run it in copy-build-system for now.
+                   (delete 'strip)
+                   ;; Run it only when we need to debug, saves us a few seconds.
+                   (delete 'validate-runpath))))))))
        (package/inherit guix
          (version version)
          (source
@@ -243,21 +236,19 @@ This enables us not to try and run build steps when not necessary."
                     (name name)
                     (version (string-take commit-ref 7))
                     (source #f)
-                    (build-system (make-local-build-system
-                                   guile-build-system
-                                   #:target-directory path
-                                   #:modules '((guix build utils)
-                                               (ice-9 match)
-                                               (srfi srfi-1))))
+                    (build-system (local-build-system+imported+modules
+                                   guile-build-system #:target-directory path))
                     (arguments
-                     (append
-                      (if (equal? src-directory "/")
-                          '()
-                          (list #:source-directory (string-drop src-directory 1)))
-                      (list #:phases
-                            (local-phases #~%standard-phases
-                                          phases-ignored-when-configured
-                                          path))))
+                     (local-arguments
+                      (append
+                       (if (equal? src-directory "/")
+                           '()
+                           (list #:source-directory (string-drop src-directory 1)))
+                       (list #:modules '((guix build utils)
+                                         (ice-9 match)
+                                         (srfi srfi-1))))
+                      phases-ignored-when-configured
+                      path))
                     (inputs
                      (let ((guix-pkg instance (make-channel-package+instance
                                                (string-append dir "/guix"))))
