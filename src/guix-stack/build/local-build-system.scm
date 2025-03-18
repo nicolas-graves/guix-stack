@@ -34,15 +34,13 @@
                ((builder (apply (bag-build old-bag)
                                 name inputs #:outputs outputs rest)))
              (return
-              #~(begin
-                  (use-modules #$@modules)
-                  (with-directory-excursion #$target-directory
-                    (for-each
-                     (lambda (out)
-                       (setenv
-                        out (string-append #$target-directory "/" out)))
-                     '#$outputs)
-                    #$builder))))))))))
+              #~(with-directory-excursion #$target-directory
+                  (for-each
+                   (lambda (out)
+                     (setenv
+                      out (string-append #$target-directory "/" out)))
+                   '#$outputs)
+                  #$builder)))))))))
 
 (define* (local-build-system+imported+modules target-build-system
                                               #:key
