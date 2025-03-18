@@ -4,12 +4,12 @@
 (define-module (guix-stack build patch)
   #:use-module (guix gexp)
   #:use-module (guix packages)
-  #:export (patch-source-phase))
+  #:export (patch-source-phases
+            patch-source-snippet))
 
-(define* (patch-source-phase source
-                             #:key
-                             (flags #~("-p1"))
-                             (patch (@ (gnu packages base) patch)))
+(define* (patch-source-patches patches
+                               #:key (flags #~("-p1"))
+                               (patch (@ (gnu packages base) patch)))
   ;; XXX: copied from guix/packages.scm
   (define (apply-patch patch)
     (format (current-error-port) "applying '~a'...~%" patch)
@@ -21,22 +21,22 @@
             "--force" "--no-backup-if-mismatch"
             flags "--input" patch))
 
-  (when (not (file-exists? "guix-configured.stamp"))
-    (for-each apply-patch (origin-patches source))
+  (for-each apply-patch patches))
 
-    ;; XXX: copied from guix/packages.scm
-    ;; Works but there's no log yet.
-    (let ((snippet (origin-snippet source)))
-      (if snippet
-          #~(let ((module (make-fresh-user-module)))
-              (module-use-interfaces!
-               module
-               (map resolve-interface '#+(origin-modules source)))
-              ((@ (system base compile) compile)
-               '#+(if (pair? snippet)
-                      (sexp->gexp snippet)
-                      snippet)
-               #:to 'value
-               #:opts %auto-compilation-options
-               #:env module))
-          #~#t))))
+(define (patch-source-snippet snippet)
+  ;; XXX: copied from guix/packages.scm
+  ;; Works but there's no log yet.
+  (let ((snippet (origin-snippet source)))
+    (if snippet
+        #~(let ((module (make-fresh-user-module)))
+            (module-use-interfaces!
+             module
+             (map resolve-interface '#+(origin-modules source)))
+            ((@ (system base compile) compile)
+             '#+(if (pair? snippet)
+                    (sexp->gexp snippet)
+                    snippet)
+             #:to 'value
+             #:opts %auto-compilation-options
+             #:env module))
+        #~#t)))

@@ -107,7 +107,7 @@
          #:map-cwd? #t
          #:user-mappings
          (list (specification->file-system-mapping "/gnu/store" #f))
-         #:profile (pk 'profile profile)
+         #:profile profile
          #:manifest manifest))
       (lambda args
         (match args
@@ -144,57 +144,62 @@
                           (default-imported-modules '())
                           (default-modules '()))
   "Modify phases to incorporate configured phases caching logic."
-  (substitute-keyword-arguments arguments
-    ((#:substitutable? _ #t)
-     #f)
-    ((#:imported-modules modules default-imported-modules)
-     (let ((imported-modules
-            (cons `((guix config) => ,(make-config.scm))
-                  (delete '(guix config)
-                          (source-module-closure
-                           '((guix-stack build patch)
-                             ;; TODO see if it's possible to remove those two
-                             (guix gexp)
-                             (guix packages)))))))
-       `(,@imported-modules ,@modules)))
-    ((#:modules modules default-modules)
-     `((guix-stack build patch) ,@modules))
-    ((#:phases phases #~%standard-phases)
-     (let* ((wrapped-phases
-             #~(modify-phases #$phases
-                 (add-before 'unpack 'delete-former-output
-                   (lambda _
-                     (when (file-exists? "out")
-                       (delete-file-recursively "out"))))
-                 (add-after 'unpack 'setup-gitignore
-                   (lambda _
-                     (let ((gitignore (open-file ".gitignore" "a")))
-                       (display "out\nguix-configured.stamp" gitignore)
-                       (close-port gitignore))))
-                 (add-after 'unpack 'patch-source
-                   (lambda _
-                     (if #$source
-                         (patch-source-phase #$source)
-                         (format #t "No need to patch source.~%"))))
-                 ;; The source is the current working directory.
-                 (delete 'unpack)
-                 (add-before 'build 'flag-as-configured
-                   (lambda _
-                     (call-with-output-file "guix-configured.stamp"
-                       (const #t))))))
-            (ignore-phases (cons* 'setup-gitignore to-ignore)))
-       (if (file-exists? (string-append path "/guix-configured.stamp"))
-           ;; This fold is a simple opposite filter-alist based on key.
-           #~(begin
-               (use-modules (srfi srfi-1))
-               (fold
-                (lambda (key result)
-                  (if (member (car key) '#$ignore-phases)
-                      result
-                      (cons key result)))
-                '()
-                (reverse #$wrapped-phases)))
-           wrapped-phases)))))
+  (let ((patches (origin-patches source))
+        (snippet (origin-snippet source)))
+    (substitute-keyword-arguments arguments
+      ((#:substitutable? _ #t)
+       #f)
+      ((#:imported-modules modules default-imported-modules)
+       (let ((imported-modules
+              (cons `((guix config) => ,(make-config.scm))
+                    (delete '(guix config)
+                            (source-module-closure
+                             '((guix-stack build patch)
+                               ;; TODO see if it's possible to remove those two
+                               (guix gexp)
+                               (guix packages)))))))
+         `(,@imported-modules ,@modules)))
+      ((#:modules modules default-modules)
+       `((guix-stack build patch) ,@modules))
+      ((#:phases phases #~%standard-phases)
+       (let* ((wrapped-phases
+               #~(modify-phases #$phases
+                   (add-before 'unpack 'delete-former-output
+                     (lambda _
+                       (when (file-exists? "out")
+                         (delete-file-recursively "out"))))
+                   (add-after 'unpack 'setup-gitignore
+                     (lambda _
+                       (let ((gitignore (open-file ".gitignore" "a")))
+                         (display "out\nguix-configured.stamp" gitignore)
+                         (close-port gitignore))))
+                   (add-after 'unpack 'patch-source
+                     (lambda _
+                       (if #$(null? patches)
+                           (format #t "No patches to apply.~%")
+                           (patch-source-patches (list #$@patches)))
+                       (if #$(not snippet) ; readability in builder
+                           (format #t "No snippet to execute.~%")
+                           (patch-source-snippet #$snippet))))
+                   ;; The source is the current working directory.
+                   (delete 'unpack)
+                   (add-before 'build 'flag-as-configured
+                     (lambda _
+                       (call-with-output-file "guix-configured.stamp"
+                         (const #t))))))
+              (ignore-phases (cons* 'setup-gitignore to-ignore)))
+         (if (file-exists? (string-append path "/guix-configured.stamp"))
+             ;; This fold is a simple opposite filter-alist based on key.
+             #~(begin
+                 (use-modules (srfi srfi-1))
+                 (fold
+                  (lambda (key result)
+                    (if (member (car key) '#$ignore-phases)
+                        result
+                        (cons key result)))
+                  '()
+                  (reverse #$wrapped-phases)))
+             wrapped-phases))))))
 
 (define (local-package pkg target-directory
                        phases-ignored-when-configured)
@@ -202,13 +207,13 @@
                             (local-build-system+imported+modules
                              (package-build-system pkg)
                              #:target-directory target-directory)))
-    (package/inherit (pk 'p pkg)
+    (package/inherit pkg
       (source #f)
       (build-system local-build-system)
       (arguments (local-arguments
                   (package-arguments pkg)
                   phases-ignored-when-configured
                   target-directory
-                  #:source (pk 's (package-source pkg))
+                  #:source (package-source pkg)
                   #:default-imported-modules imported-modules
                   #:default-modules modules)))))
