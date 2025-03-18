@@ -139,8 +139,8 @@
      (local-file tarball (string-append "local-" stripped-path ".tar")))))
 
 (define* (local-arguments arguments to-ignore path
-                          #:optional source
                           #:key
+                          (source #f)
                           (default-imported-modules '())
                           (default-modules '()))
   "Modify phases to incorporate configured phases caching logic."
@@ -209,6 +209,6 @@
                   (package-arguments pkg)
                   phases-ignored-when-configured
                   target-directory
-                  (package-source pkg)
+                  #:source (package-source pkg)
                   #:default-imported-modules imported-modules
                   #:default-modules modules)))))
