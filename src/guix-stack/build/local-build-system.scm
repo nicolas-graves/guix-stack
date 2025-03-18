@@ -17,12 +17,12 @@
   #:use-module (gnu packages)
   #:use-module (guix build utils)
   #:use-module (guix build-system)
-  #:export (make-local-build-system
+  #:export (local-build-system+imported+modules
             build-in-local-container
             local-tarball
             local-arguments))
 
-(define (make-local-lower old-lower target-directory modules)
+(define (make-local-lower old-lower target-directory)
   (lambda* args
     (let ((old-bag (apply old-lower args)))
       (bag
@@ -44,18 +44,20 @@
                      '#$outputs)
                     #$builder))))))))))
 
-(define* (make-local-build-system target-build-system
-                                  #:key
-                                  (target-directory (getcwd))
-                                  (modules '((guix build utils))))
-  (build-system
-    (name (symbol-append
-           (build-system-name target-build-system) '-local))
-    (description (string-append
-                  (build-system-description target-build-system)
-                  " ; applied as current user in " target-directory))
-    (lower (make-local-lower (build-system-lower target-build-system)
-                             target-directory modules))))
+(define* (local-build-system+imported+modules target-build-system
+                                              #:key
+                                              (target-directory (getcwd)))
+  (let ((lower (build-system-lower target-build-system)))
+    (values
+     (build-system
+       (name (symbol-append
+              (build-system-name target-build-system) '-local))
+       (description (string-append
+                     (build-system-description target-build-system)
+                     " ; applied as current user in " target-directory))
+       (lower (make-local-lower lower target-directory)))
+     (procedure-property lower 'imported-modules)
+     (procedure-property lower 'modules))))
 
 (define (default-guix-stack)
   "Return the default guix-stack package."
@@ -132,14 +134,18 @@
                    "-C" path ".")))
      (local-file tarball (string-append "local-" stripped-path ".tar")))))
 
-(define* (local-arguments arguments to-ignore path #:optional source)
+(define* (local-arguments arguments to-ignore path
+                          #:optional source
+                          #:key
+                          (default-imported-modules '())
+                          (default-modules '()))
   "Modify phases to incorporate configured phases caching logic."
   (substitute-keyword-arguments arguments
     ((#:substitutable? _ #t)
      #f)
-    ((#:modules modules)
+    ((#:imported-modules modules default-imported-modules)
      `((guix-stack build patch) ,@modules))
-    ((#:imported-modules modules)
+    ((#:modules modules default-modules)
      `((guix-stack build patch) ,@modules))
     ((#:phases phases #~%standard-phases)
      (let* ((wrapped-phases
