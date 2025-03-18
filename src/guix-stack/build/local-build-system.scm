@@ -202,13 +202,13 @@
                             (local-build-system+imported+modules
                              (package-build-system pkg)
                              #:target-directory target-directory)))
-    (package/inherit pkg
+    (package/inherit (pk 'p pkg)
       (source #f)
       (build-system local-build-system)
       (arguments (local-arguments
                   (package-arguments pkg)
                   phases-ignored-when-configured
                   target-directory
-                  #:source (package-source pkg)
+                  #:source (pk 's (package-source pkg))
                   #:default-imported-modules imported-modules
                   #:default-modules modules)))))
