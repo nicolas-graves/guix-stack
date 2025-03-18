@@ -54,8 +54,8 @@
                      (build-system-description target-build-system)
                      " ; applied as current user in " target-directory))
        (lower (make-local-lower lower target-directory)))
-     (procedure-property lower 'imported-modules)
-     (procedure-property lower 'modules))))
+     (procedure-property lower 'default-imported-modules)
+     (procedure-property lower 'default-modules))))
 
 (define (default-guix-stack)
   "Return the default guix-stack package."
