@@ -154,10 +154,7 @@
               (cons `((guix config) => ,(make-config.scm))
                     (delete '(guix config)
                             (source-module-closure
-                             '((guix-stack build patch)
-                               ;; TODO see if it's possible to remove those two
-                               (guix gexp)
-                               (guix packages)))))))
+                             '((guix-stack build patch)))))))
          `(,@imported-modules ,@modules)))
       ((#:modules modules default-modules)
        `((guix-stack build patch) ,@modules))
