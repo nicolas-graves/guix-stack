@@ -33,3 +33,9 @@ The part implementing those ideas has been moved to the =git-email= package.
 ** Documentation for Guix Extensions
 
 - guix extensions are now supported within channels since 74633
+
+** More ideas
+
+- use a git stash in order to save the contents of the configuration.
+  That might be better than using a guix-configured.stamp file.
+  That would require to implement the git-stash part from libgit2 in guile-git.
