@@ -151,7 +151,7 @@
        #f)
       ((#:imported-modules modules default-imported-modules)
        (let ((imported-modules
-              (cons `((guix config) => ,(make-config.scm))
+              (cons (make-config.scm)
                     (delete '(guix config)
                             (source-module-closure
                              '((guix-stack build patch)))))))
