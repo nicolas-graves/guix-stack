@@ -116,13 +116,13 @@
 
 (define* (local-tarball path #:optional name
                         #:key (exclude-vcs? #t))
-  "Like recursive local-file, but keep mtimes using a tarball."
-  ;; Intended to be used as an arei buffer.
-  ;; We can't intern and keep mtimes with local-file, so
-  ;; use this hack to use a wrapper tarball which keeps mtimes.
-  (let* ((stripped-path (pk '1 (string-drop-right (basename path) 1)))
-         (pfx (pk '2 (mkdtemp (format #f "/tmp/local-~aXXXXXX" stripped-path))))
-         (tarball (pk 't (string-append pfx "/" stripped-path ".tar"))))
+  "Like recursive local-file, but keep mtimes using a tarball.
+
+This is intended to be used for local hacks / partial builds."
+  ;; XXX Assumes recursive and finish with /.
+  (let* ((stripped-path (string-drop-right (basename path) 1))
+         (pfx (mkdtemp (format #f "/tmp/local-~aXXXXXX" stripped-path)))
+         (tarball (string-append pfx "/" stripped-path ".tar")))
     (and
      (apply invoke
             (append
@@ -130,12 +130,12 @@
              (if exclude-vcs?
                  '("--exclude-vcs")
                  '())
-             (list "-cf" (pk 't tarball)
+             (list "-cf" tarball
                    "--format=gnu"
-                   ;; "--owner=root:0"
-                   ;; "--group=root:0"
-                   ;; "--hard-dereference"
-                   "-C" path ".")))
+                   "--owner=root:0"
+                   "--group=root:0"
+                   "--hard-dereference"
+                   "-C" (dirname path) (basename path))))
      (local-file tarball (string-append "local-" stripped-path ".tar")))))
 
 (define* (local-arguments arguments to-ignore path
