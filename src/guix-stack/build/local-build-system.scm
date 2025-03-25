@@ -16,6 +16,7 @@
   #:use-module (gnu system file-systems)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-71)
+  #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
   #:use-module (gnu packages)
   #:use-module (guix build utils)
@@ -26,7 +27,8 @@
             local-tarball
             local-arguments
             local-package
-            package-with-source*))
+            package-with-source*
+            submodules-dir->packages))
 
 (define (make-local-lower old-lower target-directory)
   (lambda* args
@@ -241,3 +243,16 @@ the new package's version number from URI."
 
                    ;; Use #:recursive? #t to allow for directories.
                    (source (downloaded-file uri #t)))))))
+
+(define* (submodules-dir->packages #:key (dir "packages"))
+  "Provide support for the layout where all directories under a dir are
+submodules and their correspond to a development package."
+  (filter-map
+   (match-lambda
+     ((or "." "..") #f)
+     (file
+      (cons (string->symbol file)
+            (package-with-source*
+             (specification->package file)
+             (canonicalize-path (string-append dir "/" file))))))
+   (scandir dir)))
