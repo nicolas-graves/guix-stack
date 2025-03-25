@@ -20,11 +20,13 @@
   #:use-module (gnu packages)
   #:use-module (guix build utils)
   #:use-module (guix build-system)
+  #:use-module (git)
   #:export (local-build-system+imported+modules
             build-in-local-container
             local-tarball
             local-arguments
-            local-package))
+            local-package
+            package-with-source*))
 
 (define (make-local-lower old-lower target-directory)
   (lambda* args
@@ -87,8 +89,6 @@
          ;; See (@@ (guix scripts environment) manifest->derivation).
          (prof-drv ((store-lower profile-derivation)
                     store manifest #:allow-collisions? #t))
-         ;; I don't understand how we can have gexps
-         ;; here though but it's necessary to work.
          (drv (run-with-store store (bag->derivation bag package)))
          (_ (build-derivations
              store (cons* prof-drv (if (derivation? drv)
@@ -214,3 +214,30 @@ This is intended to be used for local hacks / partial builds."
                   #:source (package-source pkg)
                   #:default-imported-modules imported-modules
                   #:default-modules modules)))))
+
+;; Copied and extended from (guix transformations).
+(define* (package-with-source* p uri #:optional version
+                               #:key (keep-mtime? #f))
+  "Return a package based on P but with its source taken from URI.  Extract
+the new package's version number from URI."
+  (if (file-exists? uri)
+      (let* ((repo (repository-open uri))
+             (commit (oid->string
+                      (object-id (revparse-single repo "HEAD")))))
+        (package/inherit p
+          (source (if keep-mtime?
+                      (local-tarball uri)
+                      (local-file
+                       (if (string-suffix? "/" uri)
+                           (string-drop-right uri 1)
+                           uri)
+                       #:recursive? #t)))
+          (version (string-take commit 7))))
+      (let ((base (tarball-base-name (basename uri))))
+        (let ((_ version* (hyphen-package-name->name+version base)))
+          (package (inherit p)
+                   (version (or version version*
+                                (package-version p)))
+
+                   ;; Use #:recursive? #t to allow for directories.
+                   (source (downloaded-file uri #t)))))))
