@@ -20,13 +20,14 @@
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system guile)
   #:use-module (guix build guile-build-system)
-  #:use-module (guix-stack build local-build-system)
+  #:use-module (guix-local build local-build-system)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-71)
   #:use-module (ice-9 match)
   #:use-module (git)
-  #:export (local-channels->manifest))
+  #:export (make-channel-package+instance
+            local-channels->manifest))
 
 (define* (is-channel-up-to-date? path
                                  #:optional (source-directory ".")
