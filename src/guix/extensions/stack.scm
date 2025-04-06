@@ -24,8 +24,8 @@
   (match (command-line)
     ((guix stack . args)
      (with-error-handling
-       (match (car args)
-         ((or "-V" "--version")
+       (match args
+         (((or "-V" "--version") . rest)
           (format (current-output-port) "guix-stack: ~a
 Copyright © 2025 Nicolas Graves <ngraves@ngraves.fr>
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
@@ -38,9 +38,9 @@ There is NO WARRANTY, to the extent permitted by law.
                      (find (lambda (channel)
                              (eq? (channel-name channel) 'guix-stack))
                            (profile-channels %current-profile))))))
-         (("pull" rest ...)
+         (("pull" . rest)
           (stack-pull rest))
-         (("install-hook" rest ...)
+         (("install-hook" . rest)
           (stack-install-hook rest))
          (otherwise
           (begin
