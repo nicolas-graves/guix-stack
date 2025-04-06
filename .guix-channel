@@ -1,3 +1,7 @@
 (channel
-  (version 0)
-  (directory "src"))
+ (version 0)
+ (directory "src")
+ (dependencies
+  (channel
+   (name guix-local)
+   (url "https://git.sr.ht/~ngraves/guix-local"))))
