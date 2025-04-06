@@ -1,18 +1,17 @@
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
-;;; Copyright © 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
+;;; Copyright © 2024, 2025 Nicolas Graves <ngraves@ngraves.fr>
 
 (define-module (guix extensions stack)
-  #:use-module ((guix build utils) #:select (which))
+  #:use-module (guix channels)
   #:use-module (guix scripts)
+  #:use-module (guix profiles)
+  #:use-module ((guix ui) #:select (with-error-handling))
+  #:use-module (guix-stack scripts pull)
+  #:use-module (guix-stack scripts hook)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
+  #:use-module (srfi srfi-1)
   #:export (guix-stack))
-
-;; IMPORTANT: We must avoid loading any modules from Guix stack here,
-;; because we need to adjust the guile load paths first.  It's okay to
-;; import modules from core Guile and (guix scripts) though.
-
 
 ;;;
 ;;; Entry point.
@@ -24,58 +23,28 @@
 
   (match (command-line)
     ((guix stack . args)
-     (let ((guile (if (getenv "GUIX_STACK_UNINSTALLED")
-                      (which "guile")
-                      "@GUILE@")))
-       (apply
-        execl guile guile "-q" "-c"
-        (format #false "~y"
-                '(let ((uninstalled? (getenv "GUIX_STACK_UNINSTALLED")))
-                   (define (replace-load-paths!)
-                     (let ((own-load-path
-                            (if uninstalled?
-                                ;; Assumption: see ./pre-inst-env
-                                (list (car (string-split (getenv "GUIX_EXTENSIONS_PATH") #\:)))
-                                (list "@OWN_GUILE_LOAD_PATH@")))
-                           (own-load-compiled-path
-                            (if uninstalled?
-                                ;; Assumption: Do not try to compile when uninstalled
-                                (list "")
-                                (list "@OWN_GUILE_LOAD_COMPILED_PATH@"))))
-                       ;; Override load paths
-                       (set! %load-path
-                             (append own-load-path
-                                     ;; This is a placeholder for Guile's own pristine load path.
-                                     (list (%library-dir) (%site-dir)
-                                           (%global-site-dir) (%package-data-dir))
-                                     ;; When building in an impure environment this
-                                     ;; variable may contain locations that collide with
-                                     ;; Guile's own load path, so we put it at the very
-                                     ;; end.  We add it for all the additional Guile
-                                     ;; packages.
-                                     (parse-path
-                                      (if uninstalled?
-                                          (getenv "GUILE_LOAD_PATH")
-                                          "@GUILE_LOAD_PATH@"))))
-                       (set! %load-compiled-path
-                             (append own-load-compiled-path
-                                     ;; This is Guile's own pristine load path for
-                                     ;; compiled modules.
-                                     (let ((ccache (%site-ccache-dir)))
-                                       (list (string-append
-                                              (string-drop-right ccache
-                                                                 (string-length "site-ccache"))
-                                              "ccache")
-                                             ccache))
-                                     ;; When building in an impure environment this
-                                     ;; variable may contain locations that collide with
-                                     ;; Guile's own load path, so we put it at the very
-                                     ;; end.  We add it for all the additional Guile
-                                     ;; packages.
-                                     (parse-path
-                                      (if uninstalled?
-                                          (getenv "GUILE_LOAD_COMPILED_PATH")
-                                          "@GUILE_LOAD_COMPILED_PATH@"))))))
-                   (replace-load-paths!)
-                   (apply (@ (guix-stack main) guix-stack-main) (command-line))))
-        "--" args)))))
+     (with-error-handling
+       (match (car args)
+         ((or "-V" "--version")
+          (format (current-output-port) "guix-stack: ~a
+Copyright © 2025 Nicolas Graves <ngraves@ngraves.fr>
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+"
+                  (let ((%current-profile
+                         (string-append %profile-directory "/current-guix")))
+                    (channel-commit
+                     (find (lambda (channel)
+                             (eq? (channel-name channel) 'guix-stack))
+                           (profile-channels %current-profile))))))
+         (("pull" rest ...)
+          (stack-pull rest))
+         (("install-hook" rest ...)
+          (stack-install-hook rest))
+         (otherwise
+          (begin
+            (format (current-error-port)
+                    "guix-stack: unrecognized option or command '~a'~%"
+                    otherwise)
+            (exit 1))))))))
