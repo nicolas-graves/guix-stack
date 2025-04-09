@@ -3,6 +3,7 @@
 
 (define-module (guix-stack submodules)
   #:use-module (gnu packages)
+  #:use-module (guix channels)
   #:use-module (guix-local source)
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
@@ -18,21 +19,18 @@
   "Return generated <channel>s from DIR.
 
 DIR is assumed to be a directory where all subdirectories are submodules."
-  (let ((this-repo (repository-open parent-dir))
-        (relative-dir (string-drop (canonicalize-path dir)
-                                   (1+ (string-length parent-dir)))))
+  (let ((this-repo (repository-open parent-dir)))
     (filter-map
      (match-lambda
-       ((? (cut string-prefix? relative-dir <>) path)
+       ((or "." "..") #f)
+       (path
         (let ((this-sub (submodule-lookup this-repo path)))
           (channel
            (name (string->symbol (basename path)))
            (branch (submodule-branch this-sub))
            (commit (oid->string (submodule-head-id this-sub)))
-           (url (submodule-url this-sub)))))
-       ;; Otherwise: other submodules.
-       (_ #f))
-     (repository-submodules this-repo))))
+           (url (submodule-url this-sub))))))
+     (scandir dir))))
 
 (define* (submodules-dir->packages #:optional (dir (getcwd))
                                    #:key
