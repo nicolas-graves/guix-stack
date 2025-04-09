@@ -8,6 +8,7 @@
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2)
   #:use-module (git)
   #:export (submodules-dir->channels
             submodules-dir->packages))
@@ -24,7 +25,8 @@ DIR is assumed to be a directory where all subdirectories are submodules."
      (match-lambda
        ((or "." "..") #f)
        (path
-        (let ((this-sub (submodule-lookup this-repo path)))
+        (and-let* ((this-sub (submodule-lookup this-repo
+                                               (string-append dir "/" path))))
           (channel
            (name (string->symbol (basename path)))
            (branch (submodule-branch this-sub))
