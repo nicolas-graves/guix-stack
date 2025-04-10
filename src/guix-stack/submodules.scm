@@ -31,6 +31,7 @@ DIR is assumed to be a directory where all subdirectories are submodules."
           (channel
            (name (string->symbol (basename path)))
            (branch (submodule-branch this-sub))
+           ;; FIXME: We want to use submodule-wd-id instead.
            (commit (oid->string (submodule-head-id this-sub)))
            (url (if use-local-urls?
                     (string-append "file://" (canonicalize-path dir) "/" path)
