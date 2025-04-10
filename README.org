@@ -9,12 +9,15 @@ It's still mostly undocumented.
 
 The channel provides an extension of =guix pull=.
 
-Current available commands are :
+It builds upon =guix= and =guix-local=.
+This channel won't work on upstream guix.  It currently requires patchset 68315 to work properly.
+
+** Available subcommands
+
+Current available subcommands are :
 - =guix stack pull= to pull from a channel patched with a list of
   deterministic file-likes.
   This has a bug currently.
-
-  This channel won't work on upstream guix.  It currently requires patchset 68315 to work properly.
 
 ** Implementation notes
 
