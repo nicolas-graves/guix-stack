@@ -28,13 +28,13 @@ DIR is assumed to be a directory where all subdirectories are submodules."
        (path
         (and-let* ((this-sub (submodule-lookup this-repo
                                                (string-append dir "/" path))))
-          (pk 'c (channel
-                  (name (string->symbol (basename path)))
-                  (branch (submodule-branch this-sub))
-                  (commit (oid->string (submodule-head-id this-sub)))
-                  (url (if use-local-urls?
-                           (string-append "file://" (canonicalize-path path))
-                           (submodule-url this-sub))))))))
+          (channel
+           (name (string->symbol (basename path)))
+           (branch (submodule-branch this-sub))
+           (commit (oid->string (submodule-head-id this-sub)))
+           (url (if use-local-urls?
+                    (string-append "file://" dir "/" path)
+                    (submodule-url this-sub)))))))
      (scandir dir))))
 
 (define* (submodules-dir->packages #:optional (dir (getcwd))
