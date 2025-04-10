@@ -1,25 +1,18 @@
 #+TITLE: Guix Stack
 
-* Guix Stack
-
-This repository is home of the =guix-stack= channel and extension.
-
-The goal is to provide tools to help for local guix development.
-It's still mostly undocumented.
-
-The channel provides an extension of =guix pull=.
+A [[https://github.com/nicolas-graves/guix-extensions/blob/main/presentation.org][Guix extension]] providing tools for local guix development.
 
 It builds upon =guix= and =guix-local=.
 This channel won't work on upstream guix.  It currently requires patchset 68315 to work properly.
 
-** Available subcommands
+* Available subcommands
 
 Current available subcommands are :
 - =guix stack pull= to pull from a channel patched with a list of
   deterministic file-likes.
   This has a bug currently.
 
-** Implementation notes
+* Implementation notes
 
 In the development phase, this repository had a =guix stack
 install-hook= command, that installed a git hook that recorded metadata
@@ -33,11 +26,11 @@ configuration-wise, it started to get tricky:
 All in all, it s sounded much more adapted to an Emacs workflow (more flexible hooks, callbacks...) than a pure git one.
 The part implementing those ideas has been moved to the =git-email= package.
 
-** Documentation for Guix Extensions
+* Documentation for Guix Extensions
 
 - guix extensions are now supported within channels since 74633
 
-** More ideas
+* More ideas
 
 - use a git stash in order to save the contents of the configuration.
   That might be better than using a guix-configured.stamp file.
