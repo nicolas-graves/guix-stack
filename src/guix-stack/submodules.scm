@@ -16,7 +16,8 @@
 (define* (submodules-dir->channels #:optional (dir (getcwd))
                                    #:key
                                    (parent-dir
-                                    (dirname (repository-discover dir))))
+                                    (dirname (repository-discover dir)))
+                                   (use-local-urls? #f))
   "Return generated <channel>s from DIR.
 
 DIR is assumed to be a directory where all subdirectories are submodules."
@@ -31,7 +32,9 @@ DIR is assumed to be a directory where all subdirectories are submodules."
            (name (string->symbol (basename path)))
            (branch (submodule-branch this-sub))
            (commit (oid->string (submodule-head-id this-sub)))
-           (url (submodule-url this-sub))))))
+           (url (if use-local-urls?
+                    (string-append "file://" (canonicalize-path path))
+                    (submodule-url this-sub)))))))
      (scandir dir))))
 
 (define* (submodules-dir->packages #:optional (dir (getcwd))
