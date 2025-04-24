@@ -239,7 +239,7 @@ This enables us not to try and run build steps when not necessary."
                     (name name)
                     (version (string-take commit-ref 7))
                     (source #f)
-                    (build-system (local-build-system+imported+modules
+                    (build-system (local-build-system
                                    guile-build-system #:target-directory path))
                     (arguments
                      (local-arguments
