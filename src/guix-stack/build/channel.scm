@@ -26,7 +26,8 @@
   #:use-module (srfi srfi-71)
   #:use-module (ice-9 match)
   #:use-module (git)
-  #:export (make-channel-package+instance
+  #:export (build-local-guix
+            make-channel-package+instance
             local-channels->manifest))
 
 (define* (is-channel-up-to-date? path
@@ -109,11 +110,13 @@ This enables us not to try and run build steps when not necessary."
       (lambda args
         #f))))
 
-(define (get-local-guix path)
-  (let* ((repo (repository-open path))
-         (commit (oid->string
-                  (object-id (revparse-single repo "master"))))
-         (version (git-version "1.4.0" "0" commit))
+(define* (build-local-guix path #:optional version)
+  (let* ((version (or version
+                      (let* ((repo (repository-open path))
+                             (commit (oid->string
+                                      (object-id
+                                       (revparse-single repo "master")))))
+                        (git-version "1.4.0" "0" commit))))
          (phases-ignored-when-configured
           '(disable-failing-tests
             disable-translations
@@ -169,24 +172,31 @@ This enables us not to try and run build steps when not necessary."
                    ;; => Run it in copy-build-system for now.
                    (delete 'strip)
                    ;; Run it only when we need to debug, saves us a few seconds.
-                   (delete 'validate-runpath)))))))))
-     (package/inherit guix
-       (version version)
-       (source
-        (local-file (string-append path "/out")
-                    "local-guix"
-                    #:recursive? #t))
-       (build-system copy-build-system)
-       (arguments
-        (list #:substitutable? #f
-              #:strip-directories #~'("libexec" "bin")
-              #:validate-runpath? #f
-              #:phases
-              #~(modify-phases %standard-phases
-                  ;; The next phases have been applied already.
-                  ;; No need to repeat them several times.
-                  (delete 'validate-documentation-location)
-                  (delete 'delete-info-dir-file))))))))
+                   (delete 'validate-runpath))))))))))))
+
+(define (instantiate-local-guix path)
+  (let* ((repo (repository-open path))
+         (commit (oid->string
+                  (object-id (revparse-single repo "master"))))
+         (version (git-version "1.4.0" "0" commit)))
+    (build-local-guix path version)
+    (package/inherit guix
+      (version version)
+      (source
+       (local-file (string-append path "/out")
+                   "local-guix"
+                   #:recursive? #t))
+      (build-system copy-build-system)
+      (arguments
+       (list #:substitutable? #f
+             #:strip-directories #~'("libexec" "bin")
+             #:validate-runpath? #f
+             #:phases
+             #~(modify-phases %standard-phases
+                 ;; The next phases have been applied already.
+                 ;; No need to repeat them several times.
+                 (delete 'validate-documentation-location)
+                 (delete 'delete-info-dir-file)))))))
 
 (define make-channel-package+instance
   (memoize
@@ -214,7 +224,7 @@ This enables us not to try and run build steps when not necessary."
                             (commit commit-ref)
                             (url home-page))))
        (match name
-         ("guix" (values (get-local-guix path)
+         ("guix" (values (instantiate-local-guix path)
                          ((@@ (guix channels) channel-instance)
                           local-channel commit-ref path)))
          (_
@@ -253,8 +263,8 @@ This enables us not to try and run build steps when not necessary."
                       phases-ignored-when-configured
                       path))
                     (inputs
-                     (let ((guix-pkg instance (make-channel-package+instance
-                                               (string-append dir "/guix"))))
+                     (let ((guix-pkg _ (make-channel-package+instance
+                                        (string-append dir "/guix"))))
                        (append
                         (list guile guix-pkg)
                         (map make-channel-package+instance dependencies))))
