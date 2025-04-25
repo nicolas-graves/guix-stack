@@ -110,26 +110,26 @@ This enables us not to try and run build steps when not necessary."
         #f))))
 
 (define (get-local-guix path)
-  (with-store store
-    (let* ((repo (repository-open path))
-           (commit (oid->string
-                    (object-id (revparse-single repo "master"))))
-           (version (git-version "1.4.0" "0" commit))
-           (phases-ignored-when-configured
-            '(disable-failing-tests
-              disable-translations
-              bootstrap
-              patch-usr-bin-file
-              patch-source-shebangs
-              configure
-              patch-generated-file-shebangs
-              use-host-compressors))
-           (local-guix (local-package guix
-                                      path
-                                      phases-ignored-when-configured)))
-      (and
-       (or
-        (is-guix-up-to-date? path)
+  (let* ((repo (repository-open path))
+         (commit (oid->string
+                  (object-id (revparse-single repo "master"))))
+         (version (git-version "1.4.0" "0" commit))
+         (phases-ignored-when-configured
+          '(disable-failing-tests
+            disable-translations
+            bootstrap
+            patch-usr-bin-file
+            patch-source-shebangs
+            configure
+            patch-generated-file-shebangs
+            use-host-compressors))
+         (local-guix (local-package guix
+                                    path
+                                    phases-ignored-when-configured)))
+    (and
+     (or
+      (is-guix-up-to-date? path)
+      (with-store store
         (build-in-local-container
          store
          (package/inherit local-guix
@@ -169,24 +169,24 @@ This enables us not to try and run build steps when not necessary."
                    ;; => Run it in copy-build-system for now.
                    (delete 'strip)
                    ;; Run it only when we need to debug, saves us a few seconds.
-                   (delete 'validate-runpath))))))))
-       (package/inherit guix
-         (version version)
-         (source
-          (local-file (string-append path "/out")
-                      "local-guix"
-                      #:recursive? #t))
-         (build-system copy-build-system)
-         (arguments
-          (list #:substitutable? #f
-                #:strip-directories #~'("libexec" "bin")
-                #:validate-runpath? #f
-                #:phases
-                #~(modify-phases %standard-phases
-                    ;; The next phases have been applied already.
-                    ;; No need to repeat them several times.
-                    (delete 'validate-documentation-location)
-                    (delete 'delete-info-dir-file)))))))))
+                   (delete 'validate-runpath)))))))))
+     (package/inherit guix
+       (version version)
+       (source
+        (local-file (string-append path "/out")
+                    "local-guix"
+                    #:recursive? #t))
+       (build-system copy-build-system)
+       (arguments
+        (list #:substitutable? #f
+              #:strip-directories #~'("libexec" "bin")
+              #:validate-runpath? #f
+              #:phases
+              #~(modify-phases %standard-phases
+                  ;; The next phases have been applied already.
+                  ;; No need to repeat them several times.
+                  (delete 'validate-documentation-location)
+                  (delete 'delete-info-dir-file))))))))
 
 (define make-channel-package+instance
   (memoize
@@ -262,12 +262,12 @@ This enables us not to try and run build steps when not necessary."
                     (synopsis (string-append name " channel"))
                     (description (string-append name " channel"))
                     (license license:gpl3+))))
-            (with-store store
-              (and (or (is-channel-up-to-date? path
-                                               (if (equal? src-directory "/")
-                                                   "."
-                                                   (string-drop src-directory 1))
-                                               #:effective effective)
+            (and (or (is-channel-up-to-date? path
+                                             (if (equal? src-directory "/")
+                                                 "."
+                                                 (string-drop src-directory 1))
+                                             #:effective effective)
+                     (with-store store
                        (build-in-local-container store pkg))))
             (values
              (package/inherit pkg
