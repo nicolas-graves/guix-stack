@@ -21,13 +21,17 @@
   "Return generated <channel>s from DIR.
 
 DIR is assumed to be a directory where all subdirectories are submodules."
-  (let ((this-repo (repository-open parent-dir)))
+  (let* ((this-repo (repository-open parent-dir))
+         (relative-dir (if (string-prefix? parent-dir dir)
+                           (string-drop dir (1+ (string-length parent-dir)))
+                           dir)))
     (filter-map
      (match-lambda
        ((or "." "..") #f)
        (path
-        (and-let* ((this-sub (submodule-lookup this-repo
-                                               (string-append dir "/" path))))
+        (and-let* ((this-sub (submodule-lookup
+                              this-repo
+                              (string-append relative-dir "/" path))))
           (channel
            (name (string->symbol (basename path)))
            (branch (submodule-branch this-sub))
