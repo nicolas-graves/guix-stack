@@ -37,7 +37,7 @@ DIR is assumed to be a directory where all subdirectories are submodules."
            (branch (submodule-branch this-sub))
            (commit (oid->string (submodule-wd-id this-sub)))
            (url (if use-local-urls?
-                    (string-append "file://" (canonicalize-path dir) "/" path)
+                    (string-append (canonicalize-path dir) "/" path)
                     (submodule-url this-sub)))))))
      (scandir dir))))
 
