@@ -28,11 +28,12 @@ DIR is assumed to be a directory where all subdirectories are submodules."
        (path
         (and-let* ((this-sub (submodule-lookup
                               this-repo
-                              (string-append relative-dir "/" path))))
+                              (string-append relative-dir "/" path)))
+                   (oid (submodule-wd-id this-sub)))
           (channel
            (name (string->symbol (basename path)))
            (branch (submodule-branch this-sub))
-           (commit (oid->string (submodule-wd-id this-sub)))
+           (commit (oid->string oid))
            (url (if use-local-urls?
                     (string-append (canonicalize-path dir) "/" path)
                     (submodule-url this-sub)))))))
