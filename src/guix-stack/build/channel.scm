@@ -141,9 +141,7 @@ This enables us not to try and run build steps when not necessary."
             (substitute-keyword-arguments (package-arguments local-guix)
               ;; Disable translations for speed.
               ((#:configure-flags flags #~'())
-               #~(cons* "--disable-nls" (pk 'flags #$flags)))
-              ((#:modules modules)
-               `((srfi srfi-26) ,@modules))
+               #~(cons* "--disable-nls" #$flags))
               ((#:phases phases #~%standard-phases)
                #~(modify-phases #$phases
                    ;; Disable translations for speed.
@@ -259,7 +257,8 @@ This enables us not to try and run build steps when not necessary."
                            (list #:source-directory (string-drop src-directory 1)))
                        (list #:modules '((guix build utils)
                                          (ice-9 match)
-                                         (srfi srfi-1))))
+                                         (srfi srfi-1)
+                                         (guix build guile-build-system))))
                       phases-ignored-when-configured
                       path))
                     (inputs
