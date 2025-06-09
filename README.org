@@ -11,6 +11,7 @@ Current available subcommands are :
 - =guix stack pull= to pull from a channel patched with a list of
   deterministic file-likes.
   This has a bug currently.
+- =guix stack build channel-name= will build the channel locally just like guix-local does
 
 * Implementation notes
 
