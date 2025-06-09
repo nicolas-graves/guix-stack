@@ -142,8 +142,8 @@ This enables us not to try and run build steps when not necessary."
               ;; Disable translations for speed.
               ((#:configure-flags flags #~'())
                #~(cons* "--disable-nls" (pk 'flags #$flags)))
-              ;; ((#:modules modules)
-               ;; `((srfi srfi-26) ,@modules))
+              ((#:modules modules)
+               `((srfi srfi-26) ,@modules))
               ((#:phases phases #~%standard-phases)
                #~(modify-phases #$phases
                    ;; Disable translations for speed.
