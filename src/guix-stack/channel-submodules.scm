@@ -26,9 +26,18 @@ DIR is assumed to be a directory where all subdirectories are submodules."
      (match-lambda
        ((or "." "..") #f)
        (path
-        (and-let* ((this-sub (submodule-lookup
-                              this-repo
-                              (string-append relative-dir "/" path)))
+        (and-let* ((this-sub (catch 'git-error
+                               (lambda ()
+                                 (submodule-lookup
+                                  this-repo
+                                  (string-append relative-dir "/" path)))
+                               (lambda (key error . rest)
+                                 (if (= GIT_EEXISTS (git-error-code error))
+                                     (begin
+                                       (format (current-error-port) "\
+git-error: check that every submodule has its branch set in .gitmodules.~%")
+                                       #f)
+                                     (apply throw key error rest)))))
                    (oid (submodule-wd-id this-sub)))
           (channel
            (name (string->symbol (basename path)))
