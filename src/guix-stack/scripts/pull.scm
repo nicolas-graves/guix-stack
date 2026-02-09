@@ -42,7 +42,7 @@
                                 close-inferior)
   #:use-module (guix scripts build)
   #:use-module (guix scripts describe)
-  #:autoload   (guix build utils) (which mkdir-p)
+  #:autoload   (guix build utils) (directory-exists? which mkdir-p)
   #:use-module (guix gexp)
   #:use-module (guix git)
   #:use-module (git)
