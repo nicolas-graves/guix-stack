@@ -1,5 +1,5 @@
 ;; SPDX-License-Identifier: GPL-3.0-or-later
-;; Copyright © 2025 Nicolas Graves <ngraves@ngraves.fr>
+;; Copyright © 2025, 2026 Nicolas Graves <ngraves@ngraves.fr>
 
 (define-module (guix-stack channel-submodules)
   #:use-module (guix build utils)
@@ -11,7 +11,8 @@
   #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-26)
   #:use-module (git)
-  #:export (submodules-dir->channels))
+  #:export (submodules-dir->channel-instances
+            submodules-dir->channels))
 
 (define (get-submodule-oid full-path branch)
   "Get the OID of BRANCH for a submodule by opening its path."
@@ -22,13 +23,14 @@
             (branch-lookup submodule-repository branch BRANCH-REMOTE))
            reference-target)))
 
-(define* (submodules-dir->channels #:optional (dir (getcwd))
-                                   #:key
-                                   (parent-dir
-                                    (dirname (repository-discover dir)))
-                                   (use-local-urls? #f)
-                                   (type '(head)))
-  "Return generated <channel>s from DIR.
+(define* (submodules-dir->channel-instances #:optional (dir (getcwd))
+                                            #:key
+                                            (parent-dir
+                                             (dirname
+                                              (repository-discover dir)))
+                                            (use-local-urls? #f)
+                                            (type '(head)))
+  "Return generated <channel-instance>s from DIR.
 
 DIR is assumed to be a directory where all subdirectories are submodules."
   (with-repository parent-dir this-repo
@@ -62,12 +64,32 @@ git-error: check that every submodule has its branch set in .gitmodules.~%")
                        (any (cut get-submodule-oid full-path <>) branches))
                       (`(branch . ,branch)
                        (get-submodule-oid full-path branch)))))
-            (channel
-              (name (string->symbol (basename path)))
-              (branch (submodule-branch this-sub))
-              (commit (oid->string oid))
-              (url (if use-local-urls?
-                       (string-append (canonicalize-path dir) "/" path)
-                       (submodule-url this-sub))))))
+            ((@@ (guix channels) channel-instance)
+             (channel
+               (name (string->symbol (basename path)))
+               (branch (submodule-branch this-sub))
+               (commit (oid->string oid))
+               (url (if use-local-urls?
+                        (string-append (canonicalize-path dir) "/" path)
+                        (submodule-url this-sub))))
+             (oid->string oid)
+             (string-append (canonicalize-path dir) "/" path))))
          (_ #f))
        (scandir dir)))))
+
+(define* (submodules-dir->channels #:optional (dir (getcwd))
+                                   #:key
+                                   (parent-dir
+                                    (dirname
+                                     (repository-discover dir)))
+                                   (use-local-urls? #f)
+                                   (type '(head)))
+  "Return generated <channel>s from DIR.
+
+DIR is assumed to be a directory where all subdirectories are submodules."
+  (map channel-instance-channel
+       (submodules-dir->channel-instances
+        (getcwd)
+        #:parent-dir (dirname (repository-discover dir))
+        #:use-local-urls? #f
+        #:type '(head))))
