@@ -933,7 +933,7 @@ FUTURES is a list of channel or channel-instance."
              (match (assoc-ref opts 'channel-file)
                ((? directory-exists? dir)
                 ((@ (guix-stack channel-submodules)
-                    submodules-dir->channel-instances)
+                    submodules-dir->channels)
                  "channels"
                  #:type '(branch . (or "origin/master" "origin/main"))))
                (_
