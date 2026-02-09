@@ -102,7 +102,7 @@ git-error: check that every submodule has its branch set in .gitmodules.~%")
 DIR is assumed to be a directory where all subdirectories are submodules."
   (map channel-instance-channel
        (submodules-dir->channel-instances
-        (getcwd)
-        #:parent-dir (dirname (repository-discover dir))
-        #:use-local-urls? #f
-        #:type '(head))))
+        dir
+        #:parent-dir parent-dir
+        #:use-local-urls? use-local-urls?
+        #:type type)))
