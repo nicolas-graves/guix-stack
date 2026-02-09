@@ -11,8 +11,21 @@
   #:use-module (srfi srfi-2)
   #:use-module (srfi srfi-26)
   #:use-module (git)
-  #:export (submodules-dir->channel-instances
+  #:export (channel-instance->sexp*
+            submodules-dir->channel-instances
             submodules-dir->channels))
+
+;; Taken and adapted from upstream channel-instance->sexp.
+(define (channel-instance->sexp* instance)
+  "Return an sexp representation of INSTANCE, a channel instance."
+  (let* ((commit  (channel-instance-commit instance))
+         (channel (channel-instance-channel instance))
+         (intro   (channel-introduction channel)))
+    `(channel
+       (name ',(channel-name channel))
+       (url ,(channel-url channel))
+       (branch ,(channel-branch channel))
+       (commit ,commit))))
 
 (define (get-submodule-oid full-path branch)
   "Get the OID of BRANCH for a submodule by opening its path."
