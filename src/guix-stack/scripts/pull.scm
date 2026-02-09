@@ -929,7 +929,15 @@ FUTURES is a list of channel or channel-instance."
                                       #:argument-handler no-arguments))
             (profile (or (assq-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
-            (read-channels-and-instances (channel-list opts)))
+            (read-channels-and-instances
+             (match (assoc-ref opts 'channel-file)
+               ((? directory-exists? dir)
+                ((@ (guix-stack channel-submodules)
+                    submodules-dir->channel-instances)
+                 "channels"
+                 #:type '(branch . (or "origin/master" "origin/main"))))
+               (_
+                (channel-list opts)))))
        (if (and
             (not (assq-ref opts 'force?))
             (are-channels-up-to-date? current-channels
