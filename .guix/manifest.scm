@@ -9,7 +9,7 @@
     (inherit guix-stack)
     (name "guix-stack-devel")
     (source
-     (let ((top (dirname (current-filename))))
+     (let ((top (dirname (dirname (current-filename)))))
        (local-file top
                    #:recursive? #t
                    #:select? (git-predicate top))))))
