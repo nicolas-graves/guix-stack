@@ -16,24 +16,6 @@
   #:use-module (gnu packages guile)
   #:use-module (gnu packages package-management))
 
-(define-public guile-git-with-revwalker
-  (let ((commit "03b709e5ee66a22b54d5774ea226a31df7e4bcf4")
-        (revision "0"))
-    (package
-      (inherit guile-git)
-      (name "guile-git")
-      (version (git-version "0.9.0" revision commit))
-      (home-page "https://gitlab.com/guile-git/guile-git.git")
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url home-page)
-                      (commit commit)))
-                (file-name (git-file-name name version))
-                (sha256
-                 (base32
-                  "0jnq2snzq0zj2rmbfgzvxnzf4swfkj6air54ipxl6hyaxbli1873")))))))
-
 (define-public guix-stack
   (let ((commit "ef3e147")
         (revision "90"))
@@ -88,7 +70,7 @@
                    (string-append #$output "/share/guix/extensions"))
                   (delete-file-recursively "src/guix")))))))
       (inputs
-       (list gawk guile-3.0 guile-git-with-revwalker guix))
+       (list gawk guile-3.0 guile-git guix))
       (home-page "https://git.sr.ht/~ngraves/guix-stack")
       (synopsis "Tools for local development on GNU Guix")
       (description "This package provides a guix extension to with
