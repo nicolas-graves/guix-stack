@@ -96,21 +96,25 @@ submodules and their correspond to a development package."
                     #\-))
               (string-take str (min 50 (string-length str)))))
 
-(define* (format-patch repo commit index total #:key (robust? #f))
+(define* (format-patch repo commit index total #:key (robust? #f) (notes? #f))
   "Generate git format-patch style content.
 When ROBUST? is #t, omit the mbox envelope line and Date: header so that
-patches change as little as possible across rebases."
+patches change as little as possible across rebases.
+When NOTES? is #t, append the git note for the commit (if any) to the
+patch description."
   (let* ((author (commit-author commit))
          (parent (false-if-exception (commit-parent commit)))
          (old-tree (and parent (commit-tree parent)))
          (new-tree (commit-tree commit))
          (diff (diff-tree-to-tree repo
                                   (or old-tree new-tree)
-                                  new-tree)))
+                                  new-tree))
+         (note (and notes?
+                    (note-read repo (commit-id commit)))))
     (format #f "\
 ~aFrom: ~a <~a>
 ~aSubject: [PATCH ~a/~a] ~a~%
-~a~%
+~a~a~%
 ---
 ~a
 --
@@ -131,6 +135,14 @@ patches change as little as possible across rebases."
             total
             (commit-summary commit)
             (commit-body commit)
+            (if note
+                (format #f "Notes:\n~a\n"
+                        (string-join
+                         (map (lambda (line) (string-append "    " line))
+                              (string-split (string-trim-right (note-message note))
+                                            #\newline))
+                         "\n"))
+                "")
             (diff->string diff)
             libgit2-version)))
 
@@ -144,7 +156,8 @@ patches change as little as possible across rebases."
         (#f commits)
         ((? oid? oid) (loop (cons oid commits)))))))
 
-(define* (export-patches repo base-oid head-oid patches-dir #:key (robust? #f))
+(define* (export-patches repo base-oid head-oid patches-dir
+                         #:key (robust? #f) (notes? #f))
   "Export patches from base..HEAD to patches-dir."
   (delete-file-recursively patches-dir)
   (mkdir-p patches-dir)
@@ -160,16 +173,20 @@ patches change as little as possible across rebases."
                                   (sanitize-filename (commit-summary commit)))))
            (with-output-to-file filename
              (lambda _ (display (format-patch repo commit i total
-                                              #:robust? robust?))))
+                                              #:robust? robust?
+                                              #:notes? notes?))))
            (loop rest (1+ i))))))))
 
 (define* (submodule-generate-patches submodule-path patches-dir
                                      #:key (branches (list "origin/master"
                                                            "origin/main"))
-                                     (robust? #f))
+                                     (robust? #f)
+                                     (notes? #f))
   "Stash changes and generate patches for submodule.
 When ROBUST? is #t, omit volatile headers (mbox envelope and Date:) from
-patches so they change as little as possible across rebases."
+patches so they change as little as possible across rebases.
+When NOTES? is #t, append any git note for each commit to the patch
+description."
   (with-clean-repository submodule-path repository
     (and-let* ((head-oid (reference-target (repository-head repository)))
                (target (any
@@ -181,4 +198,5 @@ patches so they change as little as possible across rebases."
                         branches))
                (base-oid (reference-target target)))
       (export-patches repository base-oid head-oid patches-dir
-                      #:robust? robust?))))
+                      #:robust? robust?
+                      #:notes? notes?))))
