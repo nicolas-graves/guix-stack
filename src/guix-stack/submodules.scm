@@ -96,8 +96,10 @@ submodules and their correspond to a development package."
                     #\-))
               (string-take str (min 50 (string-length str)))))
 
-(define (format-patch repo commit index total)
-  "Generate git format-patch style content."
+(define* (format-patch repo commit index total #:key (robust? #f))
+  "Generate git format-patch style content.
+When ROBUST? is #t, omit the mbox envelope line and Date: header so that
+patches change as little as possible across rebases."
   (let* ((author (commit-author commit))
          (parent (false-if-exception (commit-parent commit)))
          (old-tree (and parent (commit-tree parent)))
@@ -106,21 +108,25 @@ submodules and their correspond to a development package."
                                   (or old-tree new-tree)
                                   new-tree)))
     (format #f "\
-From ~a Mon Sep 17 00:00:00 2001
-From: ~a <~a>
-Date: ~a
-Subject: [PATCH ~a/~a] ~a~%
+~aFrom: ~a <~a>
+~aSubject: [PATCH ~a/~a] ~a~%
 ~a~%
 ---
 ~a
 --
 ~a
 "
-            (oid->string (commit-id commit))
+            (if robust?
+                ""
+                (format #f "From ~a Mon Sep 17 00:00:00 2001\n"
+                        (oid->string (commit-id commit))))
             (signature-name author)
             (signature-email author)
-            (strftime "%a, %d %b %Y %H:%M:%S %z"
-                      (localtime (commit-time commit)))
+            (if robust?
+                ""
+                (format #f "Date: ~a\n"
+                        (strftime "%a, %d %b %Y %H:%M:%S %z"
+                                  (localtime (commit-time commit)))))
             index
             total
             (commit-summary commit)
@@ -138,7 +144,7 @@ Subject: [PATCH ~a/~a] ~a~%
         (#f commits)
         ((? oid? oid) (loop (cons oid commits)))))))
 
-(define (export-patches repo base-oid head-oid patches-dir)
+(define* (export-patches repo base-oid head-oid patches-dir #:key (robust? #f))
   "Export patches from base..HEAD to patches-dir."
   (delete-file-recursively patches-dir)
   (mkdir-p patches-dir)
@@ -153,13 +159,17 @@ Subject: [PATCH ~a/~a] ~a~%
                                   patches-dir i
                                   (sanitize-filename (commit-summary commit)))))
            (with-output-to-file filename
-             (lambda _ (display (format-patch repo commit i total))))
+             (lambda _ (display (format-patch repo commit i total
+                                              #:robust? robust?))))
            (loop rest (1+ i))))))))
 
 (define* (submodule-generate-patches submodule-path patches-dir
                                      #:key (branches (list "origin/master"
-                                                           "origin/main")))
-  "Stash changes and generate patches for submodule."
+                                                           "origin/main"))
+                                     (robust? #f))
+  "Stash changes and generate patches for submodule.
+When ROBUST? is #t, omit volatile headers (mbox envelope and Date:) from
+patches so they change as little as possible across rebases."
   (with-clean-repository submodule-path repository
     (and-let* ((head-oid (reference-target (repository-head repository)))
                (target (any
@@ -170,4 +180,5 @@ Subject: [PATCH ~a/~a] ~a~%
                             (string-append "refs/remotes/" branch))))
                         branches))
                (base-oid (reference-target target)))
-      (export-patches repository base-oid head-oid patches-dir))))
+      (export-patches repository base-oid head-oid patches-dir
+                      #:robust? robust?))))
