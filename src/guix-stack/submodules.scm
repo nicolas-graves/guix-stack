@@ -14,6 +14,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-2)
   #:export (submodules-dir->packages
+            export-patches
             submodule-generate-patches)
   #:re-export (submodules-dir->channels))
 
