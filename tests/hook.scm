@@ -10,36 +10,43 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-71))
 
+;; Helpers
+
+(define-syntax-rule (with-email-headers headers body ...)
+  "Populate /tmp/email-headers.txt with email HEADERS, then run BODY."
+  (let ((file "/tmp/email-headers.txt"))
+    (dynamic-wind
+        (const #t)
+        (lambda ()
+          (call-with-output-file file
+            (lambda (port)
+              (display headers port)))
+          body ...)
+        (lambda ()
+          (delete-file file)
+          #f))))
+
 ;; Copied from (guix scripts system)
 (define-syntax-rule (save-environment-excursion body ...)
   "Save the current environment variables, run BODY..., and restore them."
   (let ((env (environ)))
     (dynamic-wind
-      (const #t)
-      (lambda ()
-        body ...)
-      (lambda ()
-        (environ env)))))
-
-(define-syntax-rule (call-with-email-headers string body ...)
-  "Populate /tmp/email-headers.txt"
-  (let ((file "/tmp/email-headers.txt"))
-    (dynamic-wind
-      (const #t)
-      (lambda ()
-        (call-with-output-file file
-          (lambda (port)
-            (display string port)))
-        body ...)
-      (lambda ()
-        (delete-file file)
-        #f))))
+        (const #t)
+        (lambda ()
+          body ...)
+        (lambda ()
+          (environ env)))))
 
 (define (apply-env-vars vars)
   (for-each (match-lambda
               ((var . value)
                (setenv var value)))
             vars))
+
+(define-syntax-rule (with-environment vars body ...)
+  (save-environment-excursion
+   (apply-env-vars vars)
+   body ...))
 
 (define* (hook-eval #:optional
                     (commit-file "/tmp/null.txt")
@@ -59,11 +66,10 @@
   (define (parse-line line)
     (string-trim (cadr (string-split line #\:))))
 
-  (with-input-from-string str
-    (lambda ()
-      (let* ((port        (current-input-port))
-             (first-line  (read-line port))
-             (second-line (read-line port)))
+  (call-with-input-string str
+    (lambda (port)
+      (let ((first-line  (read-line port))
+            (second-line (read-line port)))
         (if (or (string= first-line "\
 Skipping commit: Not the last patch in the series.")
                 (not (string= second-line "")))
@@ -76,82 +82,80 @@ Skipping commit: Not the last patch in the series.")
                                    (parse-line (read-line port)))))
               (values lst message-id version number-patches)))))))
 
+;; Test suite
+
 (test-runner*)
-(setenv "GUIX_STACK_TEST" "1")
 
-(test "fails-when-not-last-patch"
-  (is
-   (let ((test-vars '(("GIT_SENDEMAIL_FILE_COUNTER" . "1")
-                      ("GIT_SENDEMAIL_FILE_TOTAL" . "3"))))
-     (apply-env-vars test-vars)
-     (call-with-email-headers
-      "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH 1/3]"
-      (let ((message-id mailing-list version number-patches
-                        (parse-hook-output (hook-eval))))
-        (not (any identity (list message-id mailing-list version number-patches))))))))
+(define-suite guix-stack-hook-suite
+  (setenv "GUIX_STACK_TEST" "1")
 
-(test "plain"
-  (is
-   (let ((test-vars '(("GIT_SENDEMAIL_FILE_COUNTER" . "1")
-                      ("GIT_SENDEMAIL_FILE_TOTAL" . "1"))))
-     (apply-env-vars test-vars)
-     (call-with-email-headers
-      "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH] Simple patch"
-      (let ((mailing-list message-id version number-patches
+  (test "fails-when-not-last-patch"
+    (is
+     (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "1")
+                         ("GIT_SENDEMAIL_FILE_TOTAL" . "3"))
+       (with-email-headers
+        "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH 1/3]"
+        (let ((message-id mailing-list version number-patches
                           (parse-hook-output (hook-eval))))
-        (and (string=? message-id "<msgid>")
-             (string=? mailing-list "mailing-list")
-             (= version 1)
-             (= number-patches 1)))))))
+          (not (any identity (list message-id mailing-list version number-patches))))))))
 
-(test "version"
-  (is
-   (let ((test-vars '(("GIT_SENDEMAIL_FILE_COUNTER" . "1")
-                      ("GIT_SENDEMAIL_FILE_TOTAL" . "1"))))
-     (apply-env-vars test-vars)
-     (call-with-email-headers
-      "Message-ID: <msgid-v>\nTo: mailing-list\nSubject: [PATCH v3] Another patch"
-      (let ((mailing-list message-id version number-patches
-                          (parse-hook-output (hook-eval))))
-        (and (string=? message-id "<msgid-v>")
-             (string=? mailing-list "mailing-list")
-             (= version 3)
-             (= number-patches 1)))))))
+  (test "plain"
+    (is
+     (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "1")
+                         ("GIT_SENDEMAIL_FILE_TOTAL" . "1"))
+       (with-email-headers
+        "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH] Simple patch"
+        (let ((mailing-list message-id version number-patches
+                            (parse-hook-output (hook-eval))))
+          (and (string=? message-id "<msgid>")
+               (string=? mailing-list "mailing-list")
+               (= version 1)
+               (= number-patches 1)))))))
 
-(test "counter"
-  (is
-   (let ((test-vars '(("GIT_SENDEMAIL_FILE_COUNTER" . "2")
-                      ("GIT_SENDEMAIL_FILE_TOTAL" . "2"))))
-     (apply-env-vars test-vars)
-     (call-with-email-headers
-      "Message-ID: <msgid-v>\nTo: mailing-list\nSubject: [PATCH 2/2] Another patch"
-      (let ((mailing-list message-id version number-patches
-                          (parse-hook-output (hook-eval))))
-        (and (string=? message-id "<msgid-v>")
-             (string=? mailing-list "mailing-list")
-             (= version 1)
-             (= number-patches 2)))))))
+  (test "version"
+    (is
+     (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "1")
+                         ("GIT_SENDEMAIL_FILE_TOTAL" . "1"))
+       (with-email-headers
+        "Message-ID: <msgid-v>\nTo: mailing-list\nSubject: [PATCH v3] Another patch"
+        (let ((mailing-list message-id version number-patches
+                            (parse-hook-output (hook-eval))))
+          (and (string=? message-id "<msgid-v>")
+               (string=? mailing-list "mailing-list")
+               (= version 3)
+               (= number-patches 1)))))))
 
-(test "version+counter"
-  (is
-   (let ((test-vars '(("GIT_SENDEMAIL_FILE_COUNTER" . "3")
-                      ("GIT_SENDEMAIL_FILE_TOTAL" . "3"))))
-     (apply-env-vars test-vars)
-     (call-with-email-headers
-      "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH v2 3/3]"
-      (let ((mailing-list message-id version number-patches
-                          (parse-hook-output (hook-eval))))
-        (and (string=? mailing-list "mailing-list")
-             (string=? message-id "<msgid>")
-             (= version 2)
-             (= number-patches 3)))))))
+  (test "counter"
+    (is
+     (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "2")
+                         ("GIT_SENDEMAIL_FILE_TOTAL" . "2"))
+       (with-email-headers
+        "Message-ID: <msgid-v>\nTo: mailing-list\nSubject: [PATCH 2/2] Another patch"
+        (let ((mailing-list message-id version number-patches
+                            (parse-hook-output (hook-eval))))
+          (and (string=? message-id "<msgid-v>")
+               (string=? mailing-list "mailing-list")
+               (= version 1)
+               (= number-patches 2)))))))
 
-(test "cover-letter"
+  (test "version+counter"
+    (is
+     (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "3")
+                         ("GIT_SENDEMAIL_FILE_TOTAL" . "3"))
+       (with-email-headers
+        "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH v2 3/3]"
+        (let ((mailing-list message-id version number-patches
+                            (parse-hook-output (hook-eval))))
+          (and (string=? mailing-list "mailing-list")
+               (string=? message-id "<msgid>")
+               (= version 2)
+               (= number-patches 3)))))))
+
+  (test "cover-letter"
   (is
-   (let ((test-vars '(("GIT_SENDEMAIL_FILE_COUNTER" . "4")
-                      ("GIT_SENDEMAIL_FILE_TOTAL" . "4"))))
-     (apply-env-vars test-vars)
-     (call-with-email-headers
+   (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "4")
+                       ("GIT_SENDEMAIL_FILE_TOTAL" . "4"))
+     (with-email-headers
       "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH 3/3]"
       (let ((mailing-list message-id version number-patches
                           (parse-hook-output (hook-eval))))
@@ -159,7 +163,22 @@ Skipping commit: Not the last patch in the series.")
              (string=? mailing-list "mailing-list")
              (= version 1)
              (= number-patches 3)))))))
+(test "cover-letter"
+  (is
+   (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "4")
+                       ("GIT_SENDEMAIL_FILE_TOTAL" . "4"))
+     (with-email-headers
+      "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH 3/3]"
+      (let ((mailing-list message-id version number-patches
+                          (parse-hook-output (hook-eval))))
+        (and (string=? message-id "<msgid>")
+             (string=? mailing-list "mailing-list")
+             (= version 1)
+             (= number-patches 3))))))))
+
+(guix-stack-hook-suite)
 
 ;; Local Variables:
 ;; eval: (put 'test 'scheme-indent-function 1)
+;; eval: (put 'with-environment 'scheme-indent-function 1)
 ;; End:
