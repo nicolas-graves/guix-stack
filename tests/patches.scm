@@ -1,7 +1,7 @@
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 ;; Copyright © 2026 Nicolas Graves <ngraves@ngraves.fr>
 
-(define-module (tests export-patches)
+(define-module (tests patches)
   #:use-module (ares suitbl core)
   #:use-module (guix build utils)
   #:use-module (guix tests git)
