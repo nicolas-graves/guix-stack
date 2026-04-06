@@ -117,10 +117,10 @@ Skipping commit: Not the last patch in the series.")
      (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "1")
                          ("GIT_SENDEMAIL_FILE_TOTAL" . "1"))
        (with-email-headers
-        "Message-ID: <msgid-v>\nTo: mailing-list\nSubject: [PATCH v3] Another patch"
+        "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH v3] Another patch"
         (let ((mailing-list message-id version number-patches
                             (parse-hook-output (hook-eval))))
-          (and (string=? message-id "<msgid-v>")
+          (and (string=? message-id "<msgid>")
                (string=? mailing-list "mailing-list")
                (= version 3)
                (= number-patches 1)))))))
@@ -130,10 +130,10 @@ Skipping commit: Not the last patch in the series.")
      (with-environment '(("GIT_SENDEMAIL_FILE_COUNTER" . "2")
                          ("GIT_SENDEMAIL_FILE_TOTAL" . "2"))
        (with-email-headers
-        "Message-ID: <msgid-v>\nTo: mailing-list\nSubject: [PATCH 2/2] Another patch"
+        "Message-ID: <msgid>\nTo: mailing-list\nSubject: [PATCH 2/2] Another patch"
         (let ((mailing-list message-id version number-patches
                             (parse-hook-output (hook-eval))))
-          (and (string=? message-id "<msgid-v>")
+          (and (string=? message-id "<msgid>")
                (string=? mailing-list "mailing-list")
                (= version 1)
                (= number-patches 2)))))))
