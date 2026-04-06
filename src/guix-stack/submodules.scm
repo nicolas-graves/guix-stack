@@ -11,10 +11,12 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 textual-ports)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-2)
   #:export (submodules-dir->packages
             export-patches
+            import-patches
             submodule-generate-patches)
   #:re-export (submodules-dir->channels))
 
@@ -177,6 +179,112 @@ patch description."
                                               #:robust? robust?
                                               #:notes? notes?))))
            (loop rest (1+ i))))))))
+
+(define (parse-patch content)
+  "Parse a format-patch style patch file CONTENT.
+Returns an alist with keys: from-name, from-email, summary, body, diff."
+  (let* ((lines (string-split content #\newline))
+         ;; Skip optional mbox envelope line ("From <sha1> ...")
+         (lines (if (and (pair? lines)
+                         (string-prefix? "From " (car lines))
+                         (not (string-prefix? "From: " (car lines))))
+                    (cdr lines)
+                    lines)))
+    (let header-loop ((lines lines)
+                      (from-name "")
+                      (from-email "")
+                      (summary ""))
+      (match lines
+        (() (list (cons 'from-name from-name)
+                  (cons 'from-email from-email)
+                  (cons 'summary summary)
+                  (cons 'body "")
+                  (cons 'diff "")))
+        (("" . rest)
+         ;; End of headers; collect body lines until "---" separator.
+         (let body-loop ((lines rest) (body-lines '()))
+           (match lines
+             (() (list (cons 'from-name from-name)
+                       (cons 'from-email from-email)
+                       (cons 'summary summary)
+                       (cons 'body (string-join (reverse body-lines) "\n"))
+                       (cons 'diff "")))
+             (("---" . rest)
+              ;; Collect diff lines until the trailing "-- " or "--" line.
+              (let diff-loop ((lines rest) (diff-lines '()))
+                (match lines
+                  (() (list (cons 'from-name from-name)
+                            (cons 'from-email from-email)
+                            (cons 'summary summary)
+                            (cons 'body (string-join (reverse body-lines) "\n"))
+                            (cons 'diff (string-join (reverse diff-lines) "\n"))))
+                  (((or "--" "-- ") . _)
+                   (list (cons 'from-name from-name)
+                         (cons 'from-email from-email)
+                         (cons 'summary summary)
+                         (cons 'body (string-join (reverse body-lines) "\n"))
+                         (cons 'diff (string-join (reverse diff-lines) "\n"))))
+                  ((line . rest)
+                   (diff-loop rest (cons line diff-lines))))))
+             ((line . rest)
+              (body-loop rest (cons line body-lines))))))
+        ((line . rest)
+         (cond
+           ((string-prefix? "From: " line)
+            (let* ((from (substring line 6))
+                   (lt   (string-rindex from #\<))
+                   (gt   (string-rindex from #\>)))
+              (if (and lt gt)
+                  (header-loop rest
+                               (string-trim-right (substring from 0 lt))
+                               (substring from (1+ lt) gt)
+                               summary)
+                  (header-loop rest from-name from-email summary))))
+           ((string-prefix? "Subject: " line)
+            (let* ((subj (substring line 9))
+                   (end  (string-contains subj "] ")))
+              (header-loop rest from-name from-email
+                           (if end
+                               (substring subj (+ end 2))
+                               subj))))
+           (else
+            (header-loop rest from-name from-email summary))))))))
+
+(define* (import-patches repo base-oid patches-dir)
+  "Apply patches from PATCHES-DIR on top of BASE-OID in REPO, detaching HEAD."
+  (let* ((patch-files (sort (find-files patches-dir "\\.patch$") string<?))
+         (total (length patch-files))
+         (base-commit (commit-lookup repo base-oid)))
+    (repository-detach-head repo)
+    (let loop ((patch-files patch-files)
+               (parent-commit base-commit)
+               (i 1))
+      (match patch-files
+        (()
+         (format #t "Applied ~a patches on top of ~a\n"
+                 total (oid->string base-oid)))
+        ((patch-file . rest)
+         (let* ((content      (call-with-input-file patch-file get-string-all))
+                (parsed       (parse-patch content))
+                (from-name    (assoc-ref parsed 'from-name))
+                (from-email   (assoc-ref parsed 'from-email))
+                (summary      (assoc-ref parsed 'summary))
+                (body         (assoc-ref parsed 'body))
+                (diff-str     (assoc-ref parsed 'diff))
+                (diff         (string->diff diff-str))
+                (parent-tree  (commit-tree parent-commit))
+                (new-index    (apply-diff-to-tree repo parent-tree diff))
+                (new-tree-oid (index-write-tree-to new-index repo))
+                (new-tree     (tree-lookup repo new-tree-oid))
+                (author       (signature-now from-name from-email))
+                (message      (if (string-null? body)
+                                  (string-append summary "\n")
+                                  (string-append summary "\n\n" body "\n")))
+                (new-oid      (commit-create repo "HEAD" author author
+                                             message new-tree
+                                             (list parent-commit))))
+           (format #t "Applied patch ~a/~a: ~a\n" i total summary)
+           (loop rest (commit-lookup repo new-oid) (1+ i))))))))
 
 (define* (submodule-generate-patches submodule-path patches-dir
                                      #:key (branches (list "origin/master"
