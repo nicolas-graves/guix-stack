@@ -4,4 +4,7 @@
  (dependencies
   (channel
    (name guix-local)
-   (url "https://git.sr.ht/~ngraves/guix-local"))))
+   (url "https://git.sr.ht/~ngraves/guix-local"))
+  (channel
+   (name guix-submodule)
+   (url "https://codeberg.org/nicolas-graves/guix-submodule"))))
