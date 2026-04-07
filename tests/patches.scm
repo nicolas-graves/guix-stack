@@ -37,6 +37,38 @@
 
 (export-patches-suite)
 
+(define-suite import-patches-suite
+  (test "roundtrip-export-import"
+    (with-temporary-git-repository repo
+        '((add "hello.txt" "Hello, world!\n")
+          (commit "Initial commit")
+          (add "new-file.txt" "New content\n")
+          (commit "Add new-file.txt"))
+      (call-with-temporary-directory
+       (lambda (patches-dir)
+         (let* ((repository  (repository-open repo))
+                (head-oid    (reference-target (repository-head repository)))
+                (head-commit (commit-lookup repository head-oid))
+                (base-oid    (commit-id (commit-parent head-commit))))
+           ;; Export patches from base..HEAD
+           (export-patches repository base-oid head-oid patches-dir)
+           ;; Reset hard to base, undoing the "Add new-file.txt" commit
+           (reset repository
+                  (object-lookup repository base-oid)
+                  RESET_HARD)
+           ;; Import patches back on top of base
+           (import-patches repository base-oid patches-dir)
+           ;; Verify HEAD now points to a reconstructed commit with the right
+           ;; message and the right parent
+           (let* ((new-head-oid    (reference-target (repository-head repository)))
+                  (new-head-commit (commit-lookup repository new-head-oid)))
+             (is (string=? (commit-summary new-head-commit) "Add new-file.txt"))
+             (is (string=? (oid->string (commit-id (commit-parent new-head-commit)))
+                           (oid->string base-oid))))
+           (repository-close! repository)))))))
+
+(import-patches-suite)
+
 ;; Local Variables:
 ;; eval: (put 'test 'scheme-indent-function 1)
 ;; End:
