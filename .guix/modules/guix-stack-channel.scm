@@ -16,9 +16,78 @@
   #:use-module (gnu packages guile)
   #:use-module (gnu packages package-management))
 
+(define guix-local
+  (let ((commit "585274a")
+        (revision "0"))
+    (package
+      (name "guix-local")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (git-checkout
+         (url "https://codeberg.org/nicolas-graves/guix-local")
+         (commit commit)))
+      (build-system guile-build-system)
+      (arguments (list #:source-directory "src"))
+      (inputs (list guile-3.0.11 guile-git guix))
+      (home-page "https://codeberg.org/nicolas-graves/guix-local")
+      (synopsis "Manage you Guix channels with Git locals")
+      (description "This package provides a Guix extension to manage
+your channels with Git locals.")
+      (license license:gpl3+))))
+
+(define guix-submodule
+  (let ((commit "65f2d7e")
+        (revision "93"))
+    (package
+      (name "guix-submodule")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (git-checkout
+         (url "https://codeberg.org/nicolas-graves/guix-submodule")
+         (commit commit)))
+      (build-system guile-build-system)
+      (arguments
+       (list
+        #:source-directory "src"
+        #:phases
+        (let ((guile (this-package-input "guile")))
+          #~(modify-phases %standard-phases
+              (add-after 'unpack 'configure
+                (lambda _
+                  (let* ((guile-bin (string-append #$guile "/bin/guile"))
+                         (guile-version
+                          #$(string-join
+                             (take (string-split (package-version guile) #\.) 2)
+                             "."))
+                         (load-compiled-path (getenv "GUILE_LOAD_COMPILED_PATH"))
+                         (load-path (getenv "GUILE_LOAD_PATH")))
+                    (substitute* "src/guix/extensions/submodule.scm"
+                      (("@GUILE@") guile-bin)
+                      (("@GUILE_LOAD_PATH@") load-path)
+                      (("@GUILE_LOAD_COMPILED_PATH@") load-compiled-path)
+                      (("@OWN_GUILE_LOAD_PATH@")
+                       (string-append
+                        #$output "/share/guile/site/" guile-version))
+                      (("@OWN_GUILE_LOAD_COMPILED_PATH@")
+                       (string-append #$output "/lib/guile/"
+                                      guile-version "/site-ccache"))))))
+              (add-before 'build 'install-guix-extension
+                (lambda _
+                  (install-file
+                   "src/guix/extensions/submodule.scm"
+                   (string-append #$output "/share/guix/extensions"))
+                  (delete-file-recursively "src/guix")))))))
+      (inputs
+       (list guile-3.0.11 guile-git guix))
+      (home-page "https://codeberg.org/nicolas-graves/guix-submodule")
+      (synopsis "Manage you Guix channels with Git submodules")
+      (description "This package provides a Guix extension to manage
+your channels with Git submodules.")
+      (license license:gpl3+))))
+
 (define-public guix-stack
-  (let ((commit "ef3e147")
-        (revision "90"))
+  (let ((commit "55c20a6")
+        (revision "91"))
     (package
       (name "guix-stack")
       (version (git-version "0.0.0" revision commit))
@@ -70,7 +139,7 @@
                    (string-append #$output "/share/guix/extensions"))
                   (delete-file-recursively "src/guix")))))))
       (inputs
-       (list gawk guile-3.0 guile-git guix))
+       (list gawk guile-3.0.11 guile-git guix guix-local guix-submodule))
       (home-page "https://git.sr.ht/~ngraves/guix-stack")
       (synopsis "Tools for local development on GNU Guix")
       (description "This package provides a guix extension to with
