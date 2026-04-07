@@ -61,6 +61,7 @@
   #:use-module (ice-9 vlist)
   #:use-module (ice-9 format)
   #:use-module (guix-stack build channel)
+  #:use-module (guix-submodule channels)
   #:re-export (display-profile-content
                channel-commit-hyperlink)
   #:export (stack-pull))
@@ -932,8 +933,7 @@ FUTURES is a list of channel or channel-instance."
             (read-channels-and-instances
              (match (assoc-ref opts 'channel-file)
                ((? directory-exists? dir)
-                ((@ (guix-submodule channel-submodules)
-                    submodules-dir->channels)
+                (submodules-dir->channels
                  "channels"
                  #:type '(branch . (or "origin/master" "origin/main"))))
                (_

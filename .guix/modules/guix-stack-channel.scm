@@ -36,8 +36,8 @@ your channels with Git locals.")
       (license license:gpl3+))))
 
 (define guix-submodule
-  (let ((commit "65f2d7e")
-        (revision "93"))
+  (let ((commit "7eef382")
+        (revision "94"))
     (package
       (name "guix-submodule")
       (version (git-version "0.0.0" revision commit))
