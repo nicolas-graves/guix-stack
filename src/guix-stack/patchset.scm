@@ -104,8 +104,8 @@
       #:recursive? #t
       #:guile-for-build guile)))
 
-;;; XXX: Adapted from (guix transformations).
-(define (patched-source name source patches-or-patchsets)
+;;; XXX: Copied and adapted from (guix transformations).
+(define (patched-source* name source patches-or-patchsets)
   "Return a file-like object with the given NAME that applies MAILDIRS to
 SOURCE.  SOURCE must itself be a file-like object of any type, including
 <git-checkout>, <local-file>, etc."
@@ -159,12 +159,12 @@ SOURCE.  SOURCE must itself be a file-like object of any type, including
     ((@@ (guix channels) channel-instance)
      channel
      (channel-commit channel)
-     (patched-source
+     (patched-source*
       (symbol->string (channel-name channel))
       (git-checkout
-       (url (channel-url channel))
-       (branch (channel-branch channel))
-       (commit (channel-commit channel)))
+        (url (channel-url channel))
+        (branch (channel-branch channel))
+        (commit (channel-commit channel)))
       patchsets))))
 
 (define maybe-instantiate-channel
