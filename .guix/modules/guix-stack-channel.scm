@@ -86,8 +86,8 @@ your channels with Git submodules.")
       (license license:gpl3+))))
 
 (define-public guix-stack
-  (let ((commit "55c20a6")
-        (revision "91"))
+  (let ((commit "c8eb20d")
+        (revision "92"))
     (package
       (name "guix-stack")
       (version (git-version "0.0.0" revision commit))
